@@ -4,6 +4,8 @@ EXAMPLE
 
 TODO: Count, save and display the total lost packets for the whole run time
 
+TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
+
 TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some parts of the code
 	I take this into account and filter out 9999 values. See code with this expression:
 	... $RTT_values | ?{$_ -ne 9999} |...
@@ -877,3 +879,4 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 	}
 }
 
+Out-PingStats
