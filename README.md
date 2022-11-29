@@ -3,7 +3,7 @@
 A PowerShell program to ping a host and display plenty of statistics about the short and long-term quality of the connection
 
 ## How to use
-    Out-PingStats   # by default it pings google.com
+    Out-PingStats   # by default it pings google.com at 5 pings per sec
     Out-PingStats www.somehost.com 
 
 ## Example output and how to make the most out of it 
