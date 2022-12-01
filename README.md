@@ -30,7 +30,7 @@ Specifically we measure the two way jitter and we assume that it is evenly split
 In the above screenshot we see:
    1.   Basic statistics about the whole time
    1.   The value at this point exceeded the graph max (70ms in this example)
-   1.   You can see a period of not so good ping times\
+   1.   You can see a period of not so good ping times
    1.   During a period of 2' you had a small packet loss
    1.   The packet loss was 0.333% as you can see in the graph statistics 
 
@@ -60,7 +60,7 @@ and finaly configute your PowerShell terminal to use the new font.
     -PingsPerSec
 
 Pings per second to perform.
-Note that if you set this too high there are 2 gotchas:
+Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
 
 A) Code that renders the screen is rather slow and ping replies will pile up
   (when you stop the program, take a note of "Discarded N pings" message.
