@@ -22,19 +22,24 @@ In this example, in the the real time graph, we see 114 pings with p5=18msec and
 
 ## Important: You need a monospace font containing the unicode block characters.
 
-I think that Windows 11/Powershell 7, have proper fonts by default. In windows 10 you must download DejaVu sans mono or other fonts that contain unicode block characters, double click and click install on the downloaded ttf file, and finaly configute your PowerShell terminal to use them instead of consolas.
+I think that Windows 11/Powershell 7, have proper fonts by default. 
+In windows 10 you must download DejaVu sans mono 
+(or other fonts that contain unicode block characters), 
+install them (double click and click install on the downloaded ttf file), 
+and finaly configute your PowerShell terminal to use the new font.
 
-## Example: Not so good wifi connection
+## Example: Histogram of some not so good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
 
-## Example: A good wifi connection
+## Example: Histogram of a good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652036-79f1b56c-1866-4508-b6af-0e8beddc1e5a.png)
 
 # Parameters
     -PingsPerSec
-       Pings per second to perform.
+
+Pings per second to perform.
 Note that if you set this too high there are 2 gotchas:
 
 A) Code that renders the screen is rather slow and ping replies will pile up
@@ -43,10 +48,10 @@ A) Code that renders the screen is rather slow and ping replies will pile up
 
 B) The destination host may drop some of your ICMP echo requests(pings)
 
-    -Title (by default the host you ping)
-    -GraphMax 50 -GraphMin 5 (by default they adjust automatically)
-    -AggregationSeconds 120 (the default)
-    -BucketsCount 10 (the default)
-    -UpdateScreenEvery 1 (the default)
-    -HistSamples 100 (the default)
-    -BarGraphSamples 20 (by default fills screen width) 
+    -Title "My pings"   (by default the host you ping)
+    -GraphMax 50 -GraphMin 5    (by default they adjust automatically)
+    -AggregationSeconds 120    (the default)
+    -BucketsCount 10    (the default)
+    -UpdateScreenEvery 1    (the default)
+    -HistSamples 100    (the default)
+    -BarGraphSamples 20    (by default fills screen width) 
