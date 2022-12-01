@@ -9,6 +9,24 @@ A PowerShell program to ping a host and display plenty of statistics about the s
 ## Example output and how to make the most out of it 
 ![image](https://user-images.githubusercontent.com/4411400/204651704-cc6d6e56-81a7-43aa-b82e-6adec8f1a26e.png)
 
+The top graph shows one bar for every ping.
+So this is good for a realtime assessment of network quality.
+
+The second graph is a Histogram of the most recent few hundred pings.
+You need some experience with it to get a feeling of what is normal and what is not.
+
+The bottom three graphs give long term view of the network quality. 
+Every bar represents a measurement for a 2 minutes period. 
+
+The third graph plots the 95th percentile of the RTT of all pings in that period.
+The 95th percentile is more sensitive to shorter periods of bad ping times. 
+
+The 4th graph plots the packet loss in that period.
+
+The 5th graph plots an approximation of the 95th percentile of one way jitter in that period.
+Specifically we measure the two way jitter and we assume that it is evenly split.
+
+
 In the above screenshot we see:
    1.   Basic statistics about the whole time
    1.   The value at this point exceeded the graph max (70ms in this example)
@@ -16,7 +34,9 @@ In the above screenshot we see:
    1.   During a period of 2' you had a small packet loss
    1.   The packet loss was 0.333% as you can see in the graph statistics 
 
-In the top, real time graph, Lost packets will appear as a bar of red stars: ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
+In the top, real time graph, Lost packets will appear as a bar of red stars: 
+
+![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
 In this example, in the the real time graph, we see 114 pings with p5=18msec and p95=61msec. p5 and p95 stand for 5th and 95th percentile. So 5% of the 114 pings were <=18msec and 95% were <=61msec.
 
