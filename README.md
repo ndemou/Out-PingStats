@@ -9,17 +9,22 @@ A PowerShell program to ping a host and display plenty of statistics about the s
 ## Example output and how to make the most out of it 
 ![image](https://user-images.githubusercontent.com/4411400/204651704-cc6d6e56-81a7-43aa-b82e-6adec8f1a26e.png)
 
+If you read the output of the program carefully most of what I am explaining below is redundant.
+
 The top graph shows one bar for every ping.
 So this is good for a realtime assessment of network quality.
 
 The second graph is a Histogram of the most recent few hundred pings.
 You need some experience with it to get a feeling of what is normal and what is not.
+Take a look at the examples below for a quick start.
 
 The bottom three graphs give long term view of the network quality. 
 Every bar represents a measurement for a 2 minutes period. 
+For every 10 periods (20mins) you also see a tick on the x-axis.
 
 The third graph plots the 95th percentile of the RTT of all pings in that period.
-The 95th percentile is more sensitive to shorter periods of bad ping times. 
+I have chosen the 95th percentile because it is more sensitive to shorter periods of bad ping times. 
+So if you see 50msec you know that almost all pings had an RTT less than 50msec.
 
 The 4th graph plots the packet loss in that period.
 
