@@ -2,6 +2,10 @@
 
 A PowerShell program to ping a host and display plenty of statistics about the short and long-term quality of the connection
 
+## For the impatient
+
+    powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
+    
 ## How to use
     Out-PingStats   # by default it pings google.com at 5 pings per sec
     Out-PingStats www.somehost.com 
@@ -9,7 +13,7 @@ A PowerShell program to ping a host and display plenty of statistics about the s
 ## Example output and how to make the most out of it 
 ![image](https://user-images.githubusercontent.com/4411400/204651704-cc6d6e56-81a7-43aa-b82e-6adec8f1a26e.png)
 
-If you read the output of the program carefully most of what I am explaining below is redundant.
+(If you read the output of the program carefully most of what I am explaining below is redundant)
 
 The top graph shows one bar for every ping.
 So this is good for a realtime assessment of network quality.
