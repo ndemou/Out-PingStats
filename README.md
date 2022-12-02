@@ -1,6 +1,6 @@
 # Out-PingStats
 
-A PowerShell program to ping a host and display plenty of statistics about the short and long-term quality of the connection
+A PowerShell program to ping a host and display plenty of text and pseudo graphical statistics about the short and long-term quality of the connection
 
 ## For the impatient
 
