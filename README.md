@@ -4,9 +4,11 @@ A PowerShell program to ping a host and display plenty of text and pseudo graphi
 
 ## For the impatient
 
+To just test your internet connection (pings google.com):
+
     powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
     
-    # --or-- if you want to download and run
+To download and run with specific options for your case:
     
     powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile c:\temp\Out-PingStats.ps1}"
     Out-PingStats -PingsPerSec 2 www.somehost.com
