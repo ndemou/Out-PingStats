@@ -6,6 +6,11 @@ A PowerShell program to ping a host and display plenty of text and pseudo graphi
 
     powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
     
+    # --or-- if you want to download and run
+    
+    powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile c:\temp\Out-PingStats.ps1}"
+    Out-PingStats -PingsPerSec 2 www.somehost.com
+    
 ## How to use
     Out-PingStats   # by default it pings google.com at 5 pings per sec
     Out-PingStats www.somehost.com 
