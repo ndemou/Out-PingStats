@@ -2,6 +2,8 @@
 EXAMPLE
 . "C:\Users\user\enLogic\IT Support - Documents\scripts_and_SW_we_build\ps-various-scripts\Format-PingTimes.ps1"; Out-PingStats mazars-thes1.dyndns.org
 
+TODO: Argument to select between character set (suitable for consolas or deja vus)
+
 TODO: Count, save and display the total lost packets for the whole run time
 
 TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
@@ -57,6 +59,36 @@ $LOSS_BAR_GRAPH_THEME=@{base=$col_base;
 	hilite=$col_hilite;
 	HI=$col_HI
 }
+
+#----------------------------------------------------------------
+# What chars to use to draw bars 
+#----------------------------------------------------------------
+    # Use these, for more rich fonts like deja vus
+    #-----------------------------------------------------------
+    # chars used to draw the horizontal bars
+    $HBAR_CHARS_COUNT = 8
+    $HBAR_CHARS = " " + `
+        [char]0x258F + [char]0x258E + [char]0x258D + [char]0x258C + `
+        [char]0x258B + [char]0x258A + [char]0x2589 
+    $HBAR_CHAR_FULL = [string][char]0x2589
+
+    # chars used to draw the vertical bars
+    $VBAR_CHARS_COUNT = 8
+    $VBAR_CHARS = '_' + `
+        [char]0x2581 + [char]0x2582 + [char]0x2583 + [char]0x2584 + `
+        [char]0x2585 + [char]0x2586 + [char]0x2587 + [char]0x2588 
+
+    # Use these, for less rich fonts like consolas & courier 
+    #-----------------------------------------------------------
+    # chars used to draw the horizontal bars
+    $HBAR_CHARS_COUNT = 3
+    $HBAR_CHARS = " " + [char]9612 + [char]9608
+    $HBAR_CHAR_FULL = [string][char]9608
+
+    # chars used to draw the vertical bars # _‗₌▄◘█
+    $VBAR_CHARS_COUNT = 5
+    $VBAR_CHARS = '_' +[char]8215 +[char]8332 +[char]9604 +[char]9688 +[char]9608 
+#----------------------------------------------------------------
 
 $BarGraphSamples = $Host.UI.RawUI.WindowSize.Width - 6
 $BucketsCount=10
@@ -449,11 +481,6 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
         ($abs_min, $p5, $median, $p95, $abs_max) = ($stats.min, $stats.p5, $stats.median, $stats.p95, $stats.max)
     }
     
-    $BAR_CHARS = '_' + [char]0x2581 + [char]0x2582 + [char]0x2583 + [char]0x2584 + `
-                 [char]0x2585 + [char]0x2586 + [char]0x2587 + [char]0x2588 
-    # ' ▁▂▃▄▅▆▇█'             # ' .:1|'
-    $BAR_CHARS_MAX = 8        # 4
-
     if ($default_y_min -eq $null) { 
         # calculate a sensible Y axis min based on 5th percentile 
 		$Y_min = [Math]::max($abs_min, $p5*0.9)
@@ -511,24 +538,24 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
             # |       v▁▂▃▄▅▆▇█████████
             # v▁▂▃▄▅▆▇█████████████████
             # 0123456789012345678901234
-            $step = (($Y_max - $Y_min) / $BAR_CHARS_MAX / 3) # 3 lines
+            $step = (($Y_max - $Y_min) / $VBAR_CHARS_COUNT / 3) # 3 lines
             $quantized = [Math]::Round( ($_ - $Y_min) / $step, 0)
-            if ($quantized -gt (3 * $BAR_CHARS_MAX)) {
+            if ($quantized -gt (3 * $VBAR_CHARS_COUNT)) {
                 $topline += $col_hi + [char]0x25B2 + $col_base# '▲'
                 $midline += [char]0x2588 # '█'
                 $botline += [char]0x2588 # '█'
-            } elseif ($quantized -ge (2 * $BAR_CHARS_MAX)) {
-                $topline += $BAR_CHARS[$quantized - (2 * $BAR_CHARS_MAX) ]
+            } elseif ($quantized -ge (2 * $VBAR_CHARS_COUNT)) {
+                $topline += $VBAR_CHARS[$quantized - (2 * $VBAR_CHARS_COUNT) ]
                 $midline += [char]0x2588 # '█'
                 $botline += [char]0x2588 # '█'
-            } elseif ($quantized -ge (1 * $BAR_CHARS_MAX)) {
+            } elseif ($quantized -ge (1 * $VBAR_CHARS_COUNT)) {
                 $topline += $space
-                $midline += $BAR_CHARS[$quantized - (1 * $BAR_CHARS_MAX) ]
+                $midline += $VBAR_CHARS[$quantized - (1 * $VBAR_CHARS_COUNT) ]
                 $botline += [char]0x2588 # '█'
             } else {
                 $topline += $space
                 $midline += $space
-                $botline += $BAR_CHARS[$quantized]
+                $botline += $VBAR_CHARS[$quantized]
             }
         }
    
@@ -571,20 +598,17 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
 }   
 
 function percent_to_bar($percent, $Chars_for_100perc) {
-    # used by show_histogram
-    $bar_chars = " " + [char]0x258F + [char]0x258E + [char]0x258D + [char]0x258C + [char]0x258B + [char]0x258A + [char]0x2589 
-    $bar_chars_full = [string]$bar_chars[7]
-    
+    # used by show_histogram 
     try {
         $float_length = [double]($percent/100*$Chars_for_100perc)
     } catch {
         return ""
     }
     $full_blocks = [int][Math]::floor($float_length)
-    $remeinder = [int]([Math]::floor(($float_length - [Math]::floor($float_length)) * 8))
-    $eights = $bar_chars[$remeinder] 
-    $bar = $bar_chars_full * $full_blocks 
-    if ($remeinder -ne 0) {$bar += $bar_chars[$remeinder]}
+    $remeinder = [int]([Math]::floor(($float_length - [Math]::floor($float_length)) * $HBAR_CHARS_COUNT))
+    $eights = $HBAR_CHARS[$remeinder] 
+    $bar = $HBAR_CHAR_FULL * $full_blocks 
+    if ($remeinder -ne 0) {$bar += $HBAR_CHARS[$remeinder]}
     return $bar
 }
 
