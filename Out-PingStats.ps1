@@ -2,28 +2,47 @@
 EXAMPLE
 . "C:\Users\user\enLogic\IT Support - Documents\scripts_and_SW_we_build\ps-various-scripts\Format-PingTimes.ps1"; Out-PingStats mazars-thes1.dyndns.org
 
-TODO: Argument to select between character set (suitable for consolas or deja vus)
+TODO: When user presses Z(Zoom) togle max for most time graphs to half/full.
+TODO: When user presses H(Histogram) hide/show the histogram.
+TODO: Instead of showing one slow time graph for the p95, split it in two graphs:
+      One graph will show just the minimum TTL (think of it as the DC part of the TTL)
+      and the other is showing the delta p95%-min (think of it as the AC part)
+      This will be very helpfull for high lattency paths (take sattelite links as an
+      an extreme example) or cases where the "DC" part changes outside our controll
+      while we are interveaning to decrease the variability of TTLs
+TODO: Record EVERY ping response to a text file named like:
+            google.com.2022-12-16_19.01.21.pingtimes
+      First line is 
+            pingrec-v1,2022-05-12,5 pings/sec,google.com
+      Then we have one line per minute starting with the timestamp "hhmm:"
+      Finaly one char per ping follows. The char is [char](ttl+32) 
+      (e.g. "A" for 33msec, "B" for 34msec...)
+TODO: When user presses C(Character-set) change between the two character sets
+      (After that I can default to the low-res charset and add a reminder 
+       on the screen "Pressing C will toggle graph resolution". This reminder 
+       will go away the first time the user presses C)
+TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
+TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
+TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter (A,B,C, ...)
 
 TODO: Count, save and display the total lost packets for the whole run time
 
-TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
-
 TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some parts of the code
-	I take this into account and filter out 9999 values. See code with this expression:
-	... $RTT_values | ?{$_ -ne 9999} |...
-	I don't always do it however. One case that this hurts is when deciding the max time
-	to display on the histogram (without a user provided -GraphMax).
+    I take this into account and filter out 9999 values. See code with this expression:
+    ... $RTT_values | ?{$_ -ne 9999} |...
+    I don't always do it however. One case that this hurts is when deciding the max time
+    to display on the histogram (without a user provided -GraphMax).
 
 TODO: log file only stores last N samples. Keep data for at least 24hours instead.
-	Also mark the samples with at least one timestamp per minute
+    Also mark the samples with at least one timestamp per minute
 
 TODO: I could probably add a heatmap with 2 periods per character. 
-	If one period is the default 2min then with 15chars I can cover 1 hour.
-	I am not sure how to convert the RTT, jitter and loss of 2mins to ONE color though
-	Maybe the user can specify a use (e.g. VoIP, browsing, gaming) and based on that
-	I can come up with a color for perfect, very good, good, poor, bad, very bad
-	(NOTE to self: If I need a color scale I can use color scales A) or B) 
-	from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
+    If one period is the default 2min then with 15chars I can cover 1 hour.
+    I am not sure how to convert the RTT, jitter and loss of 2mins to ONE color though
+    Maybe the user can specify a use (e.g. VoIP, browsing, gaming) and based on that
+    I can come up with a color for perfect, very good, good, poor, bad, very bad
+    (NOTE to self: If I need a color scale I can use color scales A) or B) 
+    from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
 #>
 
 Set-strictmode -version latest
@@ -54,40 +73,41 @@ $fr = 255; $fg = 255; $fb =   0; $col_hilite  ="$ESC[38;2;$fr;$fg;${Fb}m"
 $Br = 255; $Bg =  50; $Bb =  80
 $fr = 255; $fg = 255; $fb =   0; $col_HI="$esc[38;2;$Fr;$Fg;${Fb}m$esc[48;2;$Br;$Bg;${Bb}m"
 $LOSS_BAR_GRAPH_THEME=@{base=$col_base;
-	low=$col_low;
-	empty=$col_empty;
-	hilite=$col_hilite;
-	HI=$col_HI
+    low=$col_low;
+    empty=$col_empty;
+    hilite=$col_hilite;
+    HI=$col_HI
 }
 
 #----------------------------------------------------------------
 # What chars to use to draw bars 
 #----------------------------------------------------------------
-    # Use these, for more rich fonts like deja vus
+    # HIGH RESOLUTION Use these, if you have rich fonts like deja vus
     #-----------------------------------------------------------
     # chars used to draw the horizontal bars
-    $HBAR_CHARS_COUNT = 8
-    $HBAR_CHARS = " " + `
+    $HR_HBAR_CHARS_COUNT = 8
+    $HR_HBAR_CHARS = " " + `
         [char]0x258F + [char]0x258E + [char]0x258D + [char]0x258C + `
         [char]0x258B + [char]0x258A + [char]0x2589 
-    $HBAR_CHAR_FULL = [string][char]0x2589
+    $HR_HBAR_CHAR_FULL = [string][char]0x2589
 
     # chars used to draw the vertical bars
-    $VBAR_CHARS_COUNT = 8
-    $VBAR_CHARS = '_' + `
+    $HR_VBAR_CHARS_COUNT = 8
+    $HR_VBAR_CHARS = '_' + `
         [char]0x2581 + [char]0x2582 + [char]0x2583 + [char]0x2584 + `
         [char]0x2585 + [char]0x2586 + [char]0x2587 + [char]0x2588 
 
-    # Use these, for less rich fonts like consolas & courier 
+    # LOW RESOLUTION Use these, for less rich fonts like consolas & courier 
     #-----------------------------------------------------------
     # chars used to draw the horizontal bars
-    $HBAR_CHARS_COUNT = 3
-    $HBAR_CHARS = " " + [char]9612 + [char]9608
-    $HBAR_CHAR_FULL = [string][char]9608
+    $LR_HBAR_CHARS_COUNT = 3
+    $LR_HBAR_CHARS = " " + [char]9612 + [char]9608
+    $LR_HBAR_CHAR_FULL = [string][char]9608
 
     # chars used to draw the vertical bars # _‗₌▄◘█
-    $VBAR_CHARS_COUNT = 5
-    $VBAR_CHARS = '_' +[char]8215 +[char]8332 +[char]9604 +[char]9688 +[char]9608 
+    $LR_VBAR_CHARS_COUNT = 5
+    $LR_VBAR_CHARS = '_' +[char]8215 +[char]8332 +[char]9604 +[char]9688 +[char]9608 
+
 #----------------------------------------------------------------
 
 $BarGraphSamples = $Host.UI.RawUI.WindowSize.Width - 6
@@ -132,9 +152,10 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             [double]$UpdateScreenEvery = 1,
             [int]$BucketsCount=10,
             [int]$AggregationSeconds=120, # 2 mins
-			[int]$HistSamples=100, 
+            [int]$HistSamples=100, 
             [char]$Visual = '=',
             [int]$DebugMode = 0,
+            [int]$HighResFont = $false,
 
             [int]$BarGraphSamples = -1          
             )
@@ -146,7 +167,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $all_lost_cnt = 0
         
         $AggPeriodStart = $(get-date)
-		$ScrUpdPeriodStart = $AggPeriodStart
+        $ScrUpdPeriodStart = $AggPeriodStart
 
         $RTT_values = New-Object System.Collections.Queue
         $RTT_values = New-Object System.Collections.Queue
@@ -154,6 +175,19 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $jitter_values = New-Object System.Collections.Queue
         $loss_values = New-Object System.Collections.Queue
         
+        if ($HighResFont) {
+            $HBAR_CHARS_COUNT = $HR_HBAR_CHARS_COUNT  
+            $HBAR_CHARS =       $HR_HBAR_CHARS  
+            $HBAR_CHAR_FULL =   $HR_HBAR_CHAR_FULL  
+            $VBAR_CHARS_COUNT = $HR_VBAR_CHARS_COUNT  
+            $VBAR_CHARS =       $HR_VBAR_CHARS  
+        } else {
+            $HBAR_CHARS_COUNT = $LR_HBAR_CHARS_COUNT  
+            $HBAR_CHARS =       $LR_HBAR_CHARS  
+            $HBAR_CHAR_FULL =   $LR_HBAR_CHAR_FULL  
+            $VBAR_CHARS_COUNT = $LR_VBAR_CHARS_COUNT  
+            $VBAR_CHARS =       $LR_VBAR_CHARS  
+        }
 
         if ($BarGraphSamples -eq -1) {
             $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
@@ -163,7 +197,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $old_window_width = $Host.UI.RawUI.WindowSize.Width     
         
         $script:full_redraw = $false 
-		$SamplingStart = (get-date)
+        $SamplingStart = (get-date)
     }
     process {
         $Items  | %{ 
@@ -172,9 +206,9 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 if ($ms -lt $all_min_RTT) {$all_min_RTT=$ms}
                 if ($ms -gt $all_max_RTT) {$all_max_RTT=$ms}                
                 $all_pings_cnt += 1
-				if ($all_pings_cnt -eq 1) {
-					$SamplingStart = (get-date)
-				}
+                if ($all_pings_cnt -eq 1) {
+                    $SamplingStart = (get-date)
+                }
             } else {
                 # Failure (e.g. a timeout or anything else except a reply)
                 $ms = 9999 # <-- means failure 
@@ -209,15 +243,15 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         if ($DebugMode) {
             $script:AggPeriodSeconds = 0
             if (($all_pings_cnt -gt 0) -and (($all_pings_cnt % $AggregationSeconds) -eq 0)) {
-				$script:AggPeriodSeconds = $AggregationSeconds
-			}
+                $script:AggPeriodSeconds = $AggregationSeconds
+            }
         } else {
             $script:AggPeriodSeconds = ($(get-date) - $AggPeriodStart).TotalSeconds
         }
         if (($script:AggPeriodSeconds -ge $AggregationSeconds) -and ($RTT_values.count -gt 2)) {
             $AggPeriodStart = (get-date)
             if (!($DebugMode)) {$script:full_redraw = $true}
-			
+            
             # a lot of data are derived from the last $AggregationSeconds values of $RTT_values
             # so we keep them here for convenience
             $last_hist_secs_values = @($RTT_values | select -Last ($AggregationSeconds * $PingsPerSec))
@@ -233,7 +267,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $RTTp95_values.enqueue($p95_of_agg_period) 
 
             # populate the jitter bar graph   
-			$jitter = (p95_of_jitter $last_hist_secs_values)
+            $jitter = (p95_of_jitter $last_hist_secs_values)
             $jitter_values.enqueue($jitter)
 
             # populate the lost% bar graph
@@ -242,10 +276,10 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
             # keep at most $script:EffBarsThatFit (same as for the time graph
             while ($RTTp95_values.count -gt $script:EffBarsThatFit) {
-				$foo = $RTTp95_values.dequeue()
-				$foo = $jitter_values.dequeue()
-				$foo = $loss_values.dequeue()
-			}
+                $foo = $RTTp95_values.dequeue()
+                $foo = $jitter_values.dequeue()
+                $foo = $loss_values.dequeue()
+            }
 
             # we also save the slow updating graph values to disk
             #------------------------------------------
@@ -253,9 +287,9 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             echo "# You can run the following commands to get a nice graph" > "$file.tmp"
             echo "# $(get-date -format 'yyyy-MM-dd HH:mm:ss') $Title" >> "$file.tmp"
             echo "echo ''" >> "$file.tmp"
-			echo "`$SamplingStart = (get-date)" >> "$file.tmp"
-			echo "`$PingsPerSec=$PingsPerSec" >> "$file.tmp"
-			echo "`$HistSamples=$HistSamples" >> "$file.tmp"
+            echo "`$SamplingStart = (get-date)" >> "$file.tmp"
+            echo "`$PingsPerSec=$PingsPerSec" >> "$file.tmp"
+            echo "`$HistSamples=$HistSamples" >> "$file.tmp"
             echo "`$all_min_RTT=$all_min_RTT" >> "$file.tmp"
             echo "`$all_max_RTT=$all_max_RTT" >> "$file.tmp"
             echo "`$all_pings_cnt=$all_pings_cnt" >> "$file.tmp"
@@ -272,7 +306,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $list = (($loss_values  | %{ aprox_num $_}) -join ",")
             echo "`$loss_values=@($list)" >> "$file.tmp"
             echo "`$AggregationSeconds=$AggregationSeconds" >> "$file.tmp"
-			echo "`$HistSamples=$HistSamples" >> "$file.tmp"
+            echo "`$HistSamples=$HistSamples" >> "$file.tmp"
             echo "`$GraphMin=$GraphMin" >> "$file.tmp"
             echo "`$GraphMax=$GraphMax" >> "$file.tmp"
             echo "render_all" >> "$file.tmp"
@@ -285,31 +319,31 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         if ($RTT_values.count -eq 0) {
             echo "No reply yet. Last record: $last_input"
         } else {
-			$GetDate = $(get-date)
-			if (($GetDate - $ScrUpdPeriodStart).TotalSeconds -ge $UpdateScreenEvery) {
-				$ScrUpdPeriodStart = $GetDate
-				
-				$screen = render_all
-				if ($DebugMode) {
-					$spacer = "~"
-				} else{
-					$host.UI.RawUI.CursorPosition = @{ x = 0; y = 0 }
-					$spacer = " "
-				}
-				if (($Host.UI.RawUI.WindowSize.Width -ne $old_window_width) -or ($script:full_redraw)) {
-					clear
-					$script:full_redraw = $false 
-					$old_window_width = $Host.UI.RawUI.WindowSize.Width
-				}
-				[Console]::CursorVisible = $false
-				$screen | %{
-					write-host -nonewline "$_"
-					$spaces = $Host.UI.RawUI.WindowSize.Width - $host.UI.RawUI.CursorPosition.x -1
-					write-host -nonewline -foregroundcolor darkgray ($spacer * [math]::max(0,$spaces))
-					write-host ""
-				}
-				[Console]::CursorVisible = $true
-			}
+            $GetDate = $(get-date)
+            if (($GetDate - $ScrUpdPeriodStart).TotalSeconds -ge $UpdateScreenEvery) {
+                $ScrUpdPeriodStart = $GetDate
+                
+                $screen = render_all
+                if ($DebugMode) {
+                    $spacer = "~"
+                } else{
+                    $host.UI.RawUI.CursorPosition = @{ x = 0; y = 0 }
+                    $spacer = " "
+                }
+                if (($Host.UI.RawUI.WindowSize.Width -ne $old_window_width) -or ($script:full_redraw)) {
+                    clear
+                    $script:full_redraw = $false 
+                    $old_window_width = $Host.UI.RawUI.WindowSize.Width
+                }
+                [Console]::CursorVisible = $false
+                $screen | %{
+                    write-host -nonewline "$_"
+                    $spaces = $Host.UI.RawUI.WindowSize.Width - $host.UI.RawUI.CursorPosition.x -1
+                    write-host -nonewline -foregroundcolor darkgray ($spacer * [math]::max(0,$spaces))
+                    write-host ""
+                }
+                [Console]::CursorVisible = $true
+            }
         }
     }
     end {
@@ -358,8 +392,8 @@ function aprox_num($num) {
     try {
         return [math]::round($num, (get_enough_decimal_digits $num))
     } catch {
-		return "???"
-	}
+        return "???"
+    }
 }
 
 filter isNumeric($x) {
@@ -373,39 +407,39 @@ function stats_of_series($series){
     # TODO median is not real median if $series has even number of elements
     $sorted = ($series | sort-object)
     if ($sorted -and ($sorted -is [array])) {
-		$min =  $sorted[0]
-		$p5_position = ([int]($sorted.count * 0.05) -1)
-		$p5_position = [math]::max(0, $p5_position)
-		$p5 = $sorted[$p5_position]
-		$median = $sorted[[int]($sorted.count/2)]
+        $min =  $sorted[0]
+        $p5_position = ([int]($sorted.count * 0.05) -1)
+        $p5_position = [math]::max(0, $p5_position)
+        $p5 = $sorted[$p5_position]
+        $median = $sorted[[int]($sorted.count/2)]
         $p95_position = ([int]($sorted.count * 0.95) -1)
         $p95_position = [math]::max(0, $p95_position)
-		$p95 = $sorted[$p95_position]
-		$max = $sorted[-1]
-		return @{
-			min = $min; 
-			p5 = $p5;
-			median = $median;
-			p95 = $p95;
-			max = $max;
-		}
+        $p95 = $sorted[$p95_position]
+        $max = $sorted[-1]
+        return @{
+            min = $min; 
+            p5 = $p5;
+            median = $median;
+            p95 = $p95;
+            max = $max;
+        }
     } elseif (isNumeric($sorted)) {
-		return @{
-			min = $sorted; 
-			p5 = $sorted;
-			median = $sorted;
-			p95 = $sorted;
-			max = $sorted;
-		}
+        return @{
+            min = $sorted; 
+            p5 = $sorted;
+            median = $sorted;
+            p95 = $sorted;
+            max = $sorted;
+        }
 
     } else {
-		return @{
-			min = $null; 
-			p5 = $null;
-			median = $null;
-			p95 = $null;
-			max = $null;
-		}
+        return @{
+            min = $null; 
+            p5 = $null;
+            median = $null;
+            p95 = $null;
+            max = $null;
+        }
     }
 }
 function series_to_histogram($y_values) {
@@ -413,7 +447,7 @@ function series_to_histogram($y_values) {
     $buckets = @(0..$BucketsCount)
     For ($i=0; $i -le $BucketsCount; $i++) { $buckets[$i] = 0 }
 
-	$stats = (stats_of_series $y_values)
+    $stats = (stats_of_series $y_values)
     
     if ($GraphMin -eq -1) { # by default Y axis min is min
         $y_min = [int]$stats.min
@@ -466,24 +500,24 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
         $col_empty =  $COL_GRAPH_EMPTY
         $col_hilite = $COL_GRAPH_HILITE
         $col_hi =     $COL_GRAPH_HI
-	} else {
-		$col_base    = $theme.base
-		$col_low     = $theme.low
-		$col_empty   = $theme.empty
-		$col_hilite  = $theme.hilite
-		$col_hi      = $theme.hi
+    } else {
+        $col_base    = $theme.base
+        $col_low     = $theme.low
+        $col_empty   = $theme.empty
+        $col_hilite  = $theme.hilite
+        $col_hi      = $theme.hi
     }
 
     if (($options -like "*<stats>*") -or (($abs_min -eq $null) -and (($default_y_min -eq $null) -or ($default_y_max -eq $null)))) {
         # calculate some statistical properties
         # (we either need to display them or use them to calacl Y axis limits)
-		$stats = (stats_of_series $y_values)
+        $stats = (stats_of_series $y_values)
         ($abs_min, $p5, $median, $p95, $abs_max) = ($stats.min, $stats.p5, $stats.median, $stats.p95, $stats.max)
     }
     
     if ($default_y_min -eq $null) { 
         # calculate a sensible Y axis min based on 5th percentile 
-		$Y_min = [Math]::max($abs_min, $p5*0.9)
+        $Y_min = [Math]::max($abs_min, $p5*0.9)
     } else {
         $Y_min = $default_y_min
     }
@@ -523,11 +557,11 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
         } elseif ($_ -eq $Y_min ) {
             $topline += $space
             $midline += $space
-			if ($options -like "*<min_no_color>*") {
-				$botline += $space 
-			} else {
-				$botline += '_'
-			}
+            if ($options -like "*<min_no_color>*") {
+                $botline += $space 
+            } else {
+                $botline += '_'
+            }
         } else {
             #             16__         __24
             #                 | __17  |
@@ -577,14 +611,14 @@ function Show_bar_graph($y_values, $title="", $options="", $special_value, `
         if ($options -like "*<stats>*") {
             $abs_min = (aprox_num $abs_min)
             $median = (aprox_num $median)
-			$p5 = (aprox_num $p5)
+            $p5 = (aprox_num $p5)
             $p95 = (aprox_num $p95)
             $abs_max = (aprox_num $abs_max)
             $last = (aprox_num ($y_values | select -last 1))
             
             $title = $title -replace "<min>", "$abs_min"
             $title = $title -replace "<median>", "$median"
-			$title = $title -replace "<p5>", "$p5"
+            $title = $title -replace "<p5>", "$p5"
             $title = $title -replace "<p95>", "$p95"
             $title = $title -replace "<max>", "$abs_max"
             $title = $title -replace "<last>", "$last"
@@ -670,7 +704,7 @@ function p95_of_jitter($RTT_values){
         $prev = $_
     })
     write-verbose "jitter = $($jitter -join ',')"
-	$p95 = (stats_of_series $jitter).p95
+    $p95 = (stats_of_series $jitter).p95
     write-verbose "p95 of jitter = $p95"
     return $p95
 }
@@ -679,27 +713,27 @@ function render_slow_updating_graphs() {
     # describe the sampling period and the total time we collect samples
     # e.g. per 2' for 14'
     $AggPeriodDescr = "per $([math]::round($AggregationSeconds/60,1))' "+`
-		"for $([math]::round($AggregationSeconds*$RTTp95_values.count/60,1))'"
+        "for $([math]::round($AggregationSeconds*$RTTp95_values.count/60,1))'"
     
-	# X axis limits
+    # X axis limits
     $MaxItems = $Host.UI.RawUI.WindowSize.Width - 6
 
-	# display $RTTp95_values
-	#------------------------------
-	if ($GraphMin -ne -1) {$y_min = $GraphMin} else {$y_min = $null}
-	if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = $null}
-	$title = "95th percentile of RTTs $AggPeriodDescr, min=<min>, max=<max>, last=<last> (ms)"	
-	Show_bar_graph @($RTTp95_values | select -last $MaxItems) $title "<stats><H_grid>" 9999 $y_min $y_max
-	echo ""
+    # display $RTTp95_values
+    #------------------------------
+    if ($GraphMin -ne -1) {$y_min = $GraphMin} else {$y_min = $null}
+    if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = $null}
+    $title = "95th percentile of RTTs $AggPeriodDescr, min=<min>, max=<max>, last=<last> (ms)"  
+    Show_bar_graph @($RTTp95_values | select -last $MaxItems) $title "<stats><H_grid>" 9999 $y_min $y_max
+    echo ""
 
     # display the lost% bar graph
-	#------------------------------
+    #------------------------------
     $title = "lost% $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
     Show_bar_graph @($loss_values | select -last $MaxItems) $title "<stats><H_grid><min_no_color>" 100 0 12 $LOSS_BAR_GRAPH_THEME
     echo ""
     
     # display the lost% bar graph
-	#------------------------------
+    #------------------------------
     $title = "95th percentile of aprox. one-way jitter $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     $title = "95th percentile of aprox. one-way jitter $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     Show_bar_graph @($jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null 0 30
@@ -714,16 +748,16 @@ function render_all() {
 
     $graph_values =  @($RTT_values | select -last $script:EffBarsThatFit)
     # display the RTT bar graph
-	[long]$secs = [math]::ceiling(($(get-date) - $SamplingStart).TotalSeconds)
+    [long]$secs = [math]::ceiling(($(get-date) - $SamplingStart).TotalSeconds)
     echo "$COL_H1$Title - $all_pings_cnt pings, $secs`", ~$($PingsPerSec)pings/s, min=$all_min_RTT, max=$($all_max_RTT)ms$COL_RST"
     echo ""
     #echo ([string][char]9472*75)
     $title = "RTT/ping for $($graph_values.count) pings, min=<min>, p5=<p5>, p95=<p95>, max=<max>, last=<last> (ms)"
     # decide Y axis limits
-	$stats = (stats_of_series $graph_values)
-	($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-	
-	$y_min = [math]::floor(([Math]::max($time_graph_abs_min, $p5*0.9)/10)*10)
+    $stats = (stats_of_series $graph_values)
+    ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
+    
+    $y_min = [math]::floor(([Math]::max($time_graph_abs_min, $p5*0.9)/10)*10)
     $y_max = [math]::ceiling($p95 * 1.1/10)*10
     if ($GraphMin -ne -1) {$y_min = $GraphMin}
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
@@ -741,9 +775,9 @@ function render_all() {
     
     if ($RTTp95_values.count) {
         render_slow_updating_graphs
-		if (Test-Path variable:script:LOG_FILE) {
-			echo "$COL_IMP_LOW     (Saving to $($script:LOG_FILE))"
-		}		
+        if (Test-Path variable:script:LOG_FILE) {
+            echo "$COL_IMP_LOW     (Saving to $($script:LOG_FILE))"
+        }       
     }
     
     if ($DebugMode) {
@@ -787,120 +821,123 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         [double]$GraphMin = -1,
         [int]$BucketsCount=10,
         [int]$AggregationSeconds=120, # 2 mins
-		[int]$HistSamples=-1, 
+        [int]$HistSamples=-1, 
         [char]$Visual = '=',
         [int]$DebugMode = 0,
+        [int]$HighResFont = $false,
 
         [double]$UpdateScreenEvery = 1,
         [int]$BarGraphSamples = -1          
 
     )
 
-	try {
-		$script:LOG_FILE="pingtimes.$Destination.$(get-date -format 'yyyy-MM-dd_HH.mm.ss').ps1"
-		if (!($Title)) {
-			$Title = $Destination
-		}
-		if ($HistSamples -eq -1) {
-			# by default make histogram from 1min samples 
-			# BUT AT LEAST FROM 100 SAMPLES if 1min has less
-			$HistSamples = [math]::max(100, $PingsPerSec * 60)
-		}
-		
-		# Use `Test-Connection -Ping` if it exists or fallback to `ping.exe`
-		$TestConnectionPingIsAvailable = ((Get-Command Test-Connection).Parameters['Ping'])
-		
-		$jobs = (0..($PingsPerSec-1) | %{ start-job -ArgumentList ($_/$PingsPerSec), $Destination, $TestConnectionPingIsAvailable -ScriptBlock {
-			$delay = $args[0]
-			$Destination = $args[1]
-			$TestConnectionPingIsAvailable = $args[2]
+    try {
+        $script:LOG_FILE="pingtimes.$Destination.$(get-date -format 'yyyy-MM-dd_HH.mm.ss').ps1"
+        if (!($Title)) {
+            $Title = $Destination
+        }
+        if ($HistSamples -eq -1) {
+            # by default make histogram from 1min samples 
+            # BUT AT LEAST FROM 100 SAMPLES if 1min has less
+            $HistSamples = [math]::max(100, $PingsPerSec * 60)
+        }
+        
+        # Use `Test-Connection -Ping` if it exists or fallback to `ping.exe`
+        $TestConnectionPingIsAvailable = ((Get-Command Test-Connection).Parameters['Ping'])
+        
+        $jobs = (0..($PingsPerSec-1) | %{ start-job -ArgumentList ($_/$PingsPerSec), $Destination, $TestConnectionPingIsAvailable -ScriptBlock {
+            $delay = $args[0]
+            $Destination = $args[1]
+            $TestConnectionPingIsAvailable = $args[2]
 
-			function Convert-PingLines {
-				<# Pipe the output of ping to this function and you get output similar to Test-Connection -Ping
-				   For compatibility with systems that don't have Test-Connection -Ping #>
-				[CmdletBinding()]
-				param (
-					[Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)]
-					[object[]]$Items
-				)
-				begin {
-					$PingLines_address=""
-					$PingLines_IgnoreTheRest = $false
-				}
-				process {
-					$Items  | %{ 
-						if (!($PingLines_IgnoreTheRest)) {
-							$out = [PSCustomObject]@{status=$null; address=$PingLines_address; latency=$null}
-							if ($_ -like '*time=*' -or $_ -like '*time<*') {				
-								[int]$ms=($_ -replace '^.*time[=<]','' -replace '[a-z].*$')
-								$out.latency = $ms
-								$out.status = "Success"
-								$out.address = $PingLines_address
-								$out
-							} elseif ($_ -like 'Pinging *') {
-								# first line (Pinging <host> with <N> bytes of data)
-								# we get the <host> part 
-								$dest_host = ($_ -replace 'Pinging ','' -replace ' with .*','')
-								if ($dest_host -match '\[') {$dest_host = ($dest_host -replace ' \[.*','' -replace ' ','')}
-								$PingLines_address = $dest_host
-							} elseif ($_.trim() -eq '') {
-								# ignore empty lines in input
-							} elseif ($_ -like "Ping statistics for*") {
-								$PingLines_IgnoreTheRest = $true
-							} else {
-								# Failure (e.g. a timeout or anything else except a reply)
-								$out.latency = 0
-								$out.status = $_
-								$out.address = $PingLines_address
-								$out
-							}
-						}
-
-					}
-				}
-				end {
-				}
-			}
-				
-			sleep $delay
-			if ($TestConnectionPingIsAvailable) {
-				Test-Connection -Ping $Destination -Continuous 
-			} else {
-				ping -t $Destination | Convert-PingLines
-			}
-		}})
-		
-		& {while ($true) {
-			# Test-Connection $Destination -ping -Continuous 
-			$data = $null
-			while (!($data)) {
-				sleep 1 # with 0.5 or less it overwhelms one CPU core...(???)
-                        if (($jobs | get-job).HasMoreData) {
-				    $data = ($jobs| receive-job)
+            function Convert-PingLines {
+                <# Pipe the output of ping to this function and you get output similar to Test-Connection -Ping
+                   For compatibility with systems that don't have Test-Connection -Ping #>
+                [CmdletBinding()]
+                param (
+                    [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)]
+                    [object[]]$Items
+                )
+                begin {
+                    $PingLines_address=""
+                    $PingLines_IgnoreTheRest = $false
+                }
+                process {
+                    $Items  | %{ 
+                        if (!($PingLines_IgnoreTheRest)) {
+                            $out = [PSCustomObject]@{status=$null; address=$PingLines_address; latency=$null}
+                            if ($_ -like '*time=*' -or $_ -like '*time<*') {                
+                                [int]$ms=($_ -replace '^.*time[=<]','' -replace '[a-z].*$')
+                                $out.latency = $ms
+                                $out.status = "Success"
+                                $out.address = $PingLines_address
+                                $out
+                            } elseif ($_ -like 'Pinging *') {
+                                # first line (Pinging <host> with <N> bytes of data)
+                                # we get the <host> part 
+                                $dest_host = ($_ -replace 'Pinging ','' -replace ' with .*','')
+                                if ($dest_host -match '\[') {$dest_host = ($dest_host -replace ' \[.*','' -replace ' ','')}
+                                $PingLines_address = $dest_host
+                            } elseif ($_.trim() -eq '') {
+                                # ignore empty lines in input
+                            } elseif ($_ -like "Ping statistics for*") {
+                                $PingLines_IgnoreTheRest = $true
+                            } else {
+                                # Failure (e.g. a timeout or anything else except a reply)
+                                $out.latency = 0
+                                $out.status = $_
+                                $out.address = $PingLines_address
+                                $out
+                            }
                         }
-			}
-			$data
-		}} | Format-PingTimes `
-				-UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax -GraphMin $GraphMin -BucketsCount `
-				$BucketsCount -AggregationSeconds $AggregationSeconds -HistSamples $HistSamples -DebugMode $DebugMode `
-				-BarGraphSamples $BarGraphSamples
-	}
-	finally { # when done 
-		$discarded_count = 0
-		if ($jobs) {
-			try {
-				$discarded_count=($jobs| receive-job).count
-			} catch {
-				$discarded_count=-1
-			}
-		}
-		if ($jobs) {
-			write-host ""
-			Write-Host -foregroundcolor white -backgroundcolor black -nonewline "Stoping pings..."
-			Remove-Job $jobs -Force
-			write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings. All stoped"
-		}
-	}
+
+                    }
+                }
+                end {
+                }
+            }
+                
+            sleep $delay
+            if ($TestConnectionPingIsAvailable) {
+                Test-Connection -Ping $Destination -Continuous 
+            } else {
+                ping -t $Destination | Convert-PingLines
+            }
+        }})
+        
+        & {while ($true) {
+            # Test-Connection $Destination -ping -Continuous 
+            $data = $null
+            while (!($data)) {
+                sleep 1 # with 0.5 or less it overwhelms one CPU core...(???)
+                        if (($jobs | get-job).HasMoreData) {
+                    $data = ($jobs| receive-job)
+                        }
+            }
+            $data
+        }} | Format-PingTimes `
+                -UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax `
+                -GraphMin $GraphMin -BucketsCount $BucketsCount `
+                -AggregationSeconds $AggregationSeconds -HistSamples $HistSamples `
+                -DebugMode $DebugMode -BarGraphSamples $BarGraphSamples `
+                -HighResFont $HighResFont
+    }
+    finally { # when done 
+        $discarded_count = 0
+        if ($jobs) {
+            try {
+                $discarded_count=($jobs| receive-job).count
+            } catch {
+                $discarded_count=-1
+            }
+        }
+        if ($jobs) {
+            write-host ""
+            Write-Host -foregroundcolor white -backgroundcolor black -nonewline "Stoping pings..."
+            Remove-Job $jobs -Force
+            write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings. All stoped"
+        }
+    }
 }
 
-Out-PingStats
+Out-PingStats @args
