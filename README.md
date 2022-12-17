@@ -56,13 +56,14 @@ In the top, real time graph, Lost packets will appear as a bar of red stars:
 
 In this example, in the the real time graph, we see 114 pings with p5=18msec and p95=61msec. p5 and p95 stand for 5th and 95th percentile. So 5% of the 114 pings were <=18msec and 95% were <=61msec.
 
-## Important: You need a monospace font containing the unicode block characters.
+If you have a monospace font containing the unicode block characters like DejaVu sans mono
+then you can add the `-HighResFont $true` option to get preatier and more accurate graphs.
 
-I think that Windows 11/Powershell 7, have proper fonts by default. 
-In windows 10 you must download DejaVu sans mono 
-(or other fonts that contain unicode block characters), 
-install them (double click and click install on the downloaded ttf file), 
-and finaly configute your PowerShell terminal to use the new font.
+> I think that Windows 11/Powershell 7, have proper fonts by default. 
+> In windows 10 you can download DejaVu sans mono 
+> (or other fonts that contain unicode block characters), 
+> install them (double click and click install on the downloaded ttf file), 
+> and finaly configute your PowerShell terminal to use the new font.
 
 ## Example: Histogram of some not so good wifi connection
 
@@ -91,3 +92,4 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     -UpdateScreenEvery 1    (the default)
     -HistSamples 100    (the default)
     -BarGraphSamples 20    (by default fills screen width) 
+    -HighResFont $true   (read above Re: fonts)
