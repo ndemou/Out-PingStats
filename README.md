@@ -30,11 +30,12 @@ The RTT HISTOGRAM includes only the most recent few hundred pings.
 You need some experience with it to get a feeling of what is normal and what is not.
 Take a look at the examples below for a quick start.
 
-All the graphs below are updated every a specific **period** which is 2mins by default (it can be changed with `-AggregationSeconds`).
-For every 10 periods (20mins) you also see a tick on the x-axis.
+All the graphs except the LAST RTTs and HISTOGRAM are slow updating. 
+Every bar represents quality metrics that are updated once every some seconds. 
+This is the *period*, it is 2mins by default and can be changed with `-AggregationSeconds`.
+In the x-axis you get a tick every 10 periods (20mins).
 
-During every period we compute a lot of measures of network quality.
-We compute the `min`imum and `p95` of all RTT times. `p95` stands for 95th percentile. 
+We compute the minimum of all RTT times(`min`) and the 95th percentile(`p95`). 
 So if p95 equals 50msec you know that 95% of pings had an RTT<=50msec.
 Or only 5% of pings were replied in more than 50msec.
 We use `p95` in order to have a measure of worst case RTT times excluding a few "outliers".
@@ -42,17 +43,18 @@ We use `p95` in order to have a measure of worst case RTT times excluding a few 
 The RTT BASELINE graph displays the minimum RTT of all pings and the the RTT VARIANCE
 displays the difference `p95-min`. 
 
-LOSS% is exactly what you guessed.
+LOSS% is exactly what you guess.
 
-ONE-WAY JITTER is an aproximation because we just get half the two-way jitter.
+ONE-WAY JITTER is an aproximation of the one-way jittet. 
+We just divide the two-way jitter by two assuming that any delays are symetrical.
 
-If you have a monospace font containing the unicode block characters like DejaVu sans mono
-then you can add the `-HighResFont $true` option to get preatier and more accurate graphs.
+## Regarding the terminal font
 
-You can download DejaVu sans mono 
-(or other fonts that contain unicode block characters), 
-install them (double click and click install on the downloaded ttf file), 
-and finaly configute your PowerShell terminal to use the new font.
+If your terminal font contains the unicode block characters (like "DejaVu sans mono" does)
+then you can add the `-HighResFont $true` option to get preatier and more detailed graphs.
+
+If you don't, you can download "DejaVu sans mono" install it by double clicking on the ttf file
+and clicking install. You then need to configute your PowerShell terminal to use the new font.
 
 ## Example: Histogram of some not so good wifi connection
 
