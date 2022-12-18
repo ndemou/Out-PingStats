@@ -245,11 +245,10 @@ function Get-FontName() {
 }
 
 function configure_graph_charset {
-    $script:HighResFont=-not ((Get-FontName) -in @('courier','consolas'))
-    
     if ($script:HighResFont -eq -1) {
-        $script:HighResFont = ((Get-FontName -ne 'Consolas') -and (FontName -eq 'Courier'))
+        $script:HighResFont=-not ((Get-FontName) -in @('courier','consolas'))
     }
+    
     if ($script:HighResFont) {
         $script:BAR_CHR_H_COUNT = $HR_BAR_CHR_H_COUNT
         $script:BAR_CHR_H_ =      $HR_BAR_CHR_H_
