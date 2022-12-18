@@ -18,52 +18,41 @@ To download and run with specific options for your case:
     Out-PingStats www.somehost.com 
 
 ## Example output and how to make the most out of it 
-![image](https://user-images.githubusercontent.com/4411400/204651704-cc6d6e56-81a7-43aa-b82e-6adec8f1a26e.png)
+![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-(If you read the output of the program carefully most of what I am explaining below is redundant)
-
-The top graph shows one bar for every ping.
-So this is good for a realtime assessment of network quality.
-
-The second graph is a Histogram of the most recent few hundred pings.
-You need some experience with it to get a feeling of what is normal and what is not.
-Take a look at the examples below for a quick start.
-
-The bottom three graphs give long term view of the network quality. 
-Every bar represents a measurement for a 2 minutes period. 
-For every 10 periods (20mins) you also see a tick on the x-axis.
-
-The third graph plots the 95th percentile of the RTT of all pings in that period.
-I have chosen the 95th percentile because it is more sensitive to shorter periods of bad ping times. 
-So if you see 50msec you know that almost all pings had an RTT less than 50msec.
-
-The 4th graph plots the packet loss in that period.
-
-The 5th graph plots an approximation of the 95th percentile of one way jitter in that period.
-Specifically we measure the two way jitter and we assume that it is evenly split.
-
-
-In the above screenshot we see:
-   1.   Basic statistics about the whole time
-   1.   The value at this point exceeded the graph max (70ms in this example)
-   1.   You can see a period of not so good ping times
-   1.   During a period of 2' you had a small packet loss
-   1.   The packet loss was 0.333% as you can see in the graph statistics 
-
+The LAST RTTs graph at the top shows one bar for every ping.
+It's just a bit better than looking at the text output of the ping command.
 In the top, real time graph, Lost packets will appear as a bar of red stars: 
 
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
-In this example, in the the real time graph, we see 114 pings with p5=18msec and p95=61msec. p5 and p95 stand for 5th and 95th percentile. So 5% of the 114 pings were <=18msec and 95% were <=61msec.
+The RTT HISTOGRAM includes only the most recent few hundred pings.
+You need some experience with it to get a feeling of what is normal and what is not.
+Take a look at the examples below for a quick start.
+
+All the graphs below are updated every a specific **period** which is 2mins by default (it can be changed with `-AggregationSeconds`).
+For every 10 periods (20mins) you also see a tick on the x-axis.
+
+During every period we compute a lot of measures of network quality.
+We compute the `min`imum and `p95` of all RTT times. `p95` stands for 95th percentile. 
+So if p95 equals 50msec you know that 95% of pings had an RTT<=50msec.
+Or only 5% of pings were replied in more than 50msec.
+We use `p95` in order to have a measure of worst case RTT times excluding a few "outliers".
+
+The RTT BASELINE graph displays the minimum RTT of all pings and the the RTT VARIANCE
+displays the difference `p95-min`. 
+
+LOSS% is exactly what you guessed.
+
+ONE-WAY JITTER is an aproximation because we just get half the two-way jitter.
 
 If you have a monospace font containing the unicode block characters like DejaVu sans mono
 then you can add the `-HighResFont $true` option to get preatier and more accurate graphs.
 
-> I think that Windows 11/Powershell 7, have proper fonts by default. 
-> In windows 10 you can download DejaVu sans mono 
-> (or other fonts that contain unicode block characters), 
-> install them (double click and click install on the downloaded ttf file), 
-> and finaly configute your PowerShell terminal to use the new font.
+You can download DejaVu sans mono 
+(or other fonts that contain unicode block characters), 
+install them (double click and click install on the downloaded ttf file), 
+and finaly configute your PowerShell terminal to use the new font.
 
 ## Example: Histogram of some not so good wifi connection
 
