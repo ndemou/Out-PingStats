@@ -1040,6 +1040,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
     )
 
+    $script:HighResFont = $HighResFont 
     try {
         $ts = (get-date -format 'yyyy-MM-dd_HH.mm')
         $script:LOG_FILE="pingtimes.$Destination.$ts.ps1"
