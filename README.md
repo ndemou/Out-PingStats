@@ -59,7 +59,7 @@ and clicking install. You then need to configute your PowerShell terminal to use
 If you don't force high or low resolution by using the `-HighResFont $true/$false` option 
 the code will try to detect the font and decide whether to use the unicode block characters.
 It will display this warning if it thinks it can not.
-![image](https://user-images.githubusercontent.com/4411400/208317534-4b2c6719-458f-457d-953c-8fd741980550.png)
+![image](https://user-images.githubusercontent.com/4411400/208317605-721dafc4-06fb-4dd1-86ae-5c264fe08a0d.png)
 
 ## Example: Histogram of some not so good wifi connection
 
