@@ -33,12 +33,12 @@ If you don't know what a histogram is [wikipedia is your friend](https://en.wiki
 Even if you know, you need some experience with it to get a feeling of what is normal and what is not.
 Take a look at the examples below for a quick start.
 
+### Slow updating graphs with indicators of network quality
+
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
-Each bar in them represents indicators of network quality that are computed for the *period* of several seconds. 
+Each bar in them represents **indicators of network quality** that are computed for the *period* of several seconds. 
 The *period* is 2mins by default and can be changed with `-AggregationSeconds`.
 In the x-axis you also get a tick every 10 periods (so 20mins by default).
-
-### Indicators of network quality
 
 We compute the minimum of all RTT times(`min`) and the 95th percentile(`p95`). 
 For the many of us without a statistics degree, if `p95` equals 50msec then 95% 
@@ -62,16 +62,18 @@ We just divide the two-way jitter by two assuming that any delays are symetrical
 
 ## Regarding the terminal font
 
-If your terminal font contains the unicode block characters (like "DejaVu sans mono" does)
+If your terminal font contains the unicode block characters
 then you can add the `-HighResFont $true` option to get preatier and more detailed graphs.
-
-If you don't, you can download "DejaVu sans mono" install it by double clicking on the ttf file
-and clicking install. You then need to configute your PowerShell terminal to use the new font.
+"Courier" and "Consolas" do not include them, "DejaVu sans mono" does.
 
 If you don't force high or low resolution by using the `-HighResFont $true/$false` option 
 the code will try to detect the font and decide whether to use the unicode block characters.
 It will display this warning if it thinks it can not.
 ![image](https://user-images.githubusercontent.com/4411400/208317605-721dafc4-06fb-4dd1-86ae-5c264fe08a0d.png)
+
+If you are seeing low-resolution graphs, you can download the free and very nice "DejaVu sans mono" fonts,
+install them (by double clicking on the ttf file and clicking install) 
+and then configute your PowerShell terminal to use it.
 
 ## Example: Histogram of some not so good wifi connection
 
