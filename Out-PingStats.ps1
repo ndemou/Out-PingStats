@@ -1034,7 +1034,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         [int]$HistSamples=-1,
         [char]$Visual = '=',
         [int]$DebugMode = 0,
-        [int]$script:HighResFont = -1, # -1=auto
+        [int]$HighResFont = -1, # -1=auto
 
         [double]$UpdateScreenEvery = 1,
         [int]$BarGraphSamples = -1
