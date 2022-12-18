@@ -17,36 +17,48 @@ To download and run with specific options for your case:
     Out-PingStats   # by default it pings google.com at 5 pings per sec
     Out-PingStats www.somehost.com 
 
-## Example output and how to make the most out of it 
+## Example output 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-The LAST RTTs graph at the top shows one bar for every ping.
-It's just a bit better than looking at the text output of the ping command.
-In the top, real time graph, Lost packets will appear as a bar of red stars: 
+## Interpretting the graphs
+
+The **LAST RTTs** graph at the top shows one bar for every ping.
+It's a bit better than looking at the text output of the ping command.
+Lost packets will appear as a bar of red stars: 
 
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
-The RTT HISTOGRAM includes only the most recent few hundred pings.
-You need some experience with it to get a feeling of what is normal and what is not.
+The **RTT HISTOGRAM** includes the most recent few hundred pings.
+If you don't know what a histogram is [wikipedia is your friend](https://en.wikipedia.org/wiki/Histogram).
+Even if you know, you need some experience with it to get a feeling of what is normal and what is not.
 Take a look at the examples below for a quick start.
 
-All the graphs except the LAST RTTs and HISTOGRAM are slow updating. 
-Every bar represents quality metrics that are updated once every some seconds. 
-This is the *period*, it is 2mins by default and can be changed with `-AggregationSeconds`.
-In the x-axis you get a tick every 10 periods (20mins).
+All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
+Each bar in them represents indicators of network quality that are computed for the *period* of several seconds. 
+The *period* is 2mins by default and can be changed with `-AggregationSeconds`.
+In the x-axis you also get a tick every 10 periods (so 20mins by default).
+
+### Indicators of network quality
 
 We compute the minimum of all RTT times(`min`) and the 95th percentile(`p95`). 
-So if p95 equals 50msec you know that 95% of pings had an RTT<=50msec.
-Or only 5% of pings were replied in more than 50msec.
-We use `p95` in order to have a measure of worst case RTT times excluding a few "outliers".
+For the many of us without a statistics degree, if `p95` equals 50msec then 95% 
+of pings had an RTT<=50msec. 
+Put another way only 5% of pings had RTTs worse than 50msec.
+We use the 95th percentile as a good aproximation of what the worst case RTT times that
+we mostly have to deal with are. In other words we consider these 5% of values that were
+worse than the `p95` as "outliers" that we can safely ignore. This is usualy a good idea because
+it's common to have spourious extreme RTT times.
 
-The RTT BASELINE graph displays the minimum RTT of all pings and the the RTT VARIANCE
-displays the difference `p95-min`. 
+Returning to the slow updating graphs, **RTT BASELINE** displays the `min` 
+(minimum RTT of all pings) and the the **RTT VARIANCE** displays the difference 
+`p95 - min`. 
+You can think of `min` as the baseline RTT time and `p95 - min` as a good indicator
+of the variability of times.
 
-LOSS% is exactly what you guess.
-
-ONE-WAY JITTER is an aproximation of the one-way jittet. 
+**LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jittet. 
 We just divide the two-way jitter by two assuming that any delays are symetrical.
+
+> **For all these indicators the lower the better**
 
 ## Regarding the terminal font
 
