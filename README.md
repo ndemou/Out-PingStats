@@ -20,7 +20,7 @@ To download and run with specific options for your case:
 ## Example output 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-## Interpretting the graphs
+## Understanding the graphs
 
 The **LAST RTTs** graph at the top shows one bar for every ping.
 It's a bit better than looking at the text output of the ping command.
