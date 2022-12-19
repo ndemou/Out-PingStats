@@ -37,7 +37,7 @@ Take a look at the examples below for a quick start.
 
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
 Each bar in them represents **indicators of network quality** that are computed 
-for a ride *period* of several seconds. 
+for a fixed *period* of several seconds. 
 The *period* is 2mins by default and can be changed with `-AggregationSeconds`.
 In the x-axis you also get a tick every 10 periods (=20mins by default).
 
