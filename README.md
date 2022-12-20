@@ -36,31 +36,33 @@ Take a look at the examples below for a quick start.
 ### Slow updating graphs
 
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
-Each bar in them represents **indicators of network quality** that are computed 
+Each bar in them represents some **indicator of network quality** that is computed 
 for a fixed *period* of several seconds. 
 The *period* is 2mins by default and can be changed with `-AggregationSeconds`.
 In the x-axis you also get a tick every 10 periods (=20mins by default).
 
-We compute the minimum of all RTT times(`min`) and the 95th percentile(`p95`). 
-For the many of us without a statistics degree, if `p95` equals 50msec then 95% 
-of pings had an RTT<=50msec. 
-Put another way only 5% of pings had RTTs worse than 50msec.
-We use the 95th percentile as a good aproximation of bad RTT times that
-we have to deal with most of the time. In other words we consider 
-these 5% of values that were worse than the `p95` as "outliers" that 
-we can safely ignore. This is usualy a good idea because
-it's common to have spourious extreme RTT times.
+> **For all these indicators the lower the better**
 
-**RTT BASELINE** displays the `min` 
-(minimum RTT of all pings) and the **RTT VARIANCE** displays the difference 
-`p95 - min`. 
-You can think of `min` as the baseline RTT time and `p95 - min` as a good indicator
-of the variability of times.
+**RTT BASELINE** displays the minimum RTT and **RTT VARIANCE** 
+displays the difference `p95 - min` for the period. 
+In simple words, almost all of your pings had an RTT between *BASELINE*
+and *BASELINE plus VARIANCE*. Read below for a more accurate 
+description of p95.
 
 **LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jittet. 
 We just divide the two-way jitter by two assuming that any delays are symetrical.
 
-> **For all these indicators the lower the better**
+#### Regarding p95
+
+`p95` is the 95th percentile of RTTs. 
+For the many of us without a statistics degree, if `p95` equals 50msec then 95% 
+of pings had an RTT<=50msec. 
+Put another way only 5% of pings had RTTs worse than 50msec.
+We use the 95th percentile as a good aproximation of bad RTT times that
+we have to deal with **most** of the time. In other words we consider 
+these 5% of values that were worse than the `p95` as "outliers" that 
+we can safely ignore. This is usualy a good idea because
+it's common to have spourious extreme RTT times.
 
 ## Regarding the terminal font
 
