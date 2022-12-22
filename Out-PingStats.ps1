@@ -1,4 +1,8 @@
 <#
+TODO: Save files in %temp% by default
+      and add argument to change folder
+TODO: Don't write stats to ps1, just print screen to .txt
+TODO: Option to read input from saved file 
 TODO: Hide histogram if console height is not enough
 TODO: Find a way for the user to bring two invocations at the same Y-min/max.
 TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
