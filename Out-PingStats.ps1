@@ -15,6 +15,25 @@ TODO: While we collect enough data points to have a decent histogram
       (Use color scales A) or B) from
       http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
 TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter (A,B,C, ...)
+      I can use this NON-BLOCKING code to read the last key pressed 
+          if ([Console]::KeyAvailable) {$keyInfo = [Console]::ReadKey($true)}
+      $keyInfo.key is the most usefull property:
+            KeyChar      Key Modifiers
+            -------      --- ---------
+                  - OemMinus         0
+                  =  OemPlus         0
+                  _ OemMinus     Shift
+                  +  OemPlus     Shift
+                  +      Add         0 # Numpad
+                  - Subtract         0 # Numpad
+                  q        Q         0
+                  ;        Q         0 # Greek
+                  0       D0         0
+                  9       D9         0
+                  0  NumPad0         0 # Numpad
+                  9  NumPad9         0 # Numpad
+                  (       D9     Shift
+                  )       D0     Shift
 
 TODO: Count, save and display the total lost packets for the whole run time
 
