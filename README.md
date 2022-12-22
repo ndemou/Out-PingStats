@@ -108,3 +108,18 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     -HistSamples 100    (the default)
     -BarGraphSamples 20    (by default fills screen width) 
     -HighResFont $true   (read above Re: fonts)
+
+# Other details
+
+The script records statistics in a file named like `google.com.2022-12-16_19.01.21.ps1`.
+You need to first source the script then run this PS file to view the statistics.
+
+The script records every ping response to a text file named like:
+`google.com.2022-12-16_19.01.21.pingtimes.
+First line is 
+
+    pingrec-v1,2022-05-12,5 pings/sec,google.com
+
+Then we have one line per minute starting with the timestamp `hhmm:`
+Finaly one char per ping follows. The char is `[char](ttl+32)`
+(e.g. "A" for 33msec, "B" for 34msec...)
