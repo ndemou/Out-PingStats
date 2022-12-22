@@ -1,12 +1,4 @@
 <#
-TO DOCUMENT: Record EVERY ping response to a text file named like:
-            google.com.2022-12-16_19.01.21.pingtimes
-      First line is
-            pingrec-v1,2022-05-12,5 pings/sec,google.com
-      Then we have one line per minute starting with the timestamp "hhmm:"
-      Finaly one char per ping follows. The char is [char](ttl+32)
-      (e.g. "A" for 33msec, "B" for 34msec...)
-
 TODO: Hide histogram if console height is not enough
 TODO: Find a way for the user to bring two invocations at the same Y-min/max.
 TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
