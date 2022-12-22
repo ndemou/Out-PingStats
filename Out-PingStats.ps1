@@ -1,8 +1,4 @@
 <#
-EXAMPLE
-. "C:\Users\user\enLogic\IT Support - Documents\scripts_and_SW_we_build\ps-various-scripts\Format-PingTimes.ps1"; Out-PingStats mazars-thes1.dyndns.org
-
-TO DOCUMENT: The 2 new graphs
 TO DOCUMENT: Record EVERY ping response to a text file named like:
             google.com.2022-12-16_19.01.21.pingtimes
       First line is
