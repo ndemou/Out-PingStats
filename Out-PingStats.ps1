@@ -1066,9 +1066,14 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             $HistSamples = [math]::max(100, $PingsPerSec * 60)
         }
 
-        # Use `Test-Connection -Ping` if it exists or fallback to `ping.exe`
+        # start one or more PS jobs in the background to continously ping the host
+        # If you want to have N pings/sec we start N jobs in parallel,
+        # one after the other with 1000/N msec delay each.
+        # (Note that although the pings are evenly spaced when we start
+        # after a while this is not guarantied)
+        # Also: We use `Test-Connection -Ping` if it is available and fallback 
+        # to `ping.exe` if it isn't
         $TestConnectionPingIsAvailable = ((Get-Command Test-Connection).Parameters['Ping'])
-
         $jobs = (0..($PingsPerSec-1) | %{ start-job -ArgumentList ($_/$PingsPerSec), $Destination, $TestConnectionPingIsAvailable -ScriptBlock {
             $delay = $args[0]
             $Destination = $args[1]
@@ -1129,6 +1134,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             }
         }})
 
+        # MAIN LOOP
+        #--------------------------------------
+        # We collect the output of the ping-jobs (see above)
+        # and pipe it to Format-PingTimes
         & {while ($true) {
             # Test-Connection $Destination -ping -Continuous
             $data = $null
@@ -1147,6 +1156,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 -HighResFont $script:HighResFont
     }
     finally { # when done
+        # AFTER A CTRL-C
+        #-----------------------------------
         $discarded_count = 0
         if ($jobs) {
             try {
