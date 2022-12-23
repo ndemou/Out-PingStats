@@ -1,4 +1,6 @@
 <#
+v0.9.1
+
 TODO: Save files in %temp% by default
       and add argument to change folder
 TODO: Don't write stats to ps1, just print screen to .txt
