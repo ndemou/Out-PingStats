@@ -4,9 +4,9 @@ v0.9.1
 TODO: Save files in %temp% by default
       and add argument to change folder
 TODO: Don't write stats to ps1, just print screen to .txt
+TODO: When multiple scripts run simultaneously sync Y-max for all graphs
 TODO: Option to read input from saved file 
 TODO: Hide histogram if console height is not enough
-TODO: Find a way for the user to bring two invocations at the same Y-min/max.
 TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
 TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
 TODO: While we collect enough data points to have a decent histogram 
@@ -16,8 +16,7 @@ TODO: While we collect enough data points to have a decent histogram
       block.
       (Use color scales A) or B) from
       http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
-TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter (A,B,C, ...)
-      I can use this NON-BLOCKING code to read the last key pressed 
+TODO: I can use this NON-BLOCKING code to read the last key pressed 
           if ([Console]::KeyAvailable) {$keyInfo = [Console]::ReadKey($true)}
       $keyInfo.key is the most usefull property:
             KeyChar      Key Modifiers
@@ -37,6 +36,9 @@ TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter
                   (       D9     Shift
                   )       D0     Shift
 
+TODO: togle visibility of graphs when user presses [R]ealtime [H]histogram [B]aseline [J]itter 
+TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter 
+      (A for the first press, B for the 2nd, C, ...)
 TODO: Count, save and display the total lost packets for the whole run time
 
 TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some parts of the code
