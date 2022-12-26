@@ -8,7 +8,6 @@ TODO: When multiple scripts run simultaneously sync Y-max for all graphs
 TODO: Option to read input from saved file 
 TODO: Hide histogram if console height is not enough
 TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
-TODO: Reduce time taken by "Stoping Pings..." when terminating with ctrl-C
 TODO: While we collect enough data points to have a decent histogram 
       we do present the histogram. After that point we change visualization:
       Now every block that used to show the histogram has a color that 
@@ -46,9 +45,6 @@ TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some part
     ... $RTT_values | ?{$_ -ne 9999} |...
     I don't always do it however. One case that this hurts is when deciding the max time
     to display on the histogram (without a user provided -GraphMax).
-
-TODO: log file only stores last N samples. Keep data for at least 24hours instead.
-    Also mark the samples with at least one timestamp per minute
 
 TODO: I could probably add a heatmap with 2 periods per character.
     If one period is the default 2min then with 15chars I can cover 1 hour.
