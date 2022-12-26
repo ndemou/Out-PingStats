@@ -1,5 +1,5 @@
 <#
-v0.9.1
+v0.9.2
 
 TODO: Save files in %temp% by default
       and add argument to change folder
@@ -158,6 +158,7 @@ $BarGraphSamples = $Host.UI.RawUI.WindowSize.Width - 6
 $BucketsCount=10
 $DebugMode=0
 $script:AggPeriodSeconds = 0
+$script:status = ""
 
 function std_num_le($x) {
     # select the maximum of these standard numbers that is 
@@ -261,8 +262,15 @@ function Get-FontName() {
 
 function configure_graph_charset {
     if ($script:HighResFont -eq -1) {
-        $script:HighResFont=-not ((Get-FontName) -in @('courier','consolas'))
+		$font = (Get-FontName)
+		echo "Console uses font: $font"
+        $script:HighResFont=-not ($font -in @('courier','consolas'))
     }
+	if (!($script:HighResFont)) {
+		$script:status += "(Low-Res)"
+		echo "(Low resolution font)"
+	}
+	
     
     if ($script:HighResFont) {
         $script:BAR_CHR_H_COUNT = $HR_BAR_CHR_H_COUNT
@@ -339,8 +347,6 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $Baseline_values = New-Object System.Collections.Queue
         $Jitter_values = New-Object System.Collections.Queue
         $Loss_values = New-Object System.Collections.Queue
-
-        configure_graph_charset
         
         if ($BarGraphSamples -eq -1) {
             $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
@@ -497,7 +503,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             if (($GetDate - $ScrUpdPeriodStart).TotalSeconds -ge $UpdateScreenEvery) {
                 $ScrUpdPeriodStart = $GetDate
 
-                $screen = render_all
+                $screen = render_all $last_input
                 if ($DebugMode) {
                     $spacer = "~"
                 } else{
@@ -955,7 +961,7 @@ function render_slow_updating_graphs() {
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
 }
 
-function render_all() {
+function render_all($last_input) {
     if (($BarGraphSamples -eq -1) -or (!(Test-Path variable:script:EffBarsThatFit))) {
         $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
     }
@@ -965,12 +971,14 @@ function render_all() {
     # display the header
     $header = "$Title - $all_pings_cnt pings, $secs`", ~$($PingsPerSec)pings/s, min=$all_min_RTT, max=$($all_max_RTT)ms"
     echo "$COL_H1$header$COL_RST"
-    if ($script:HighResFont) {
-        echo ""
-    } else {
-        echo "$COL_IMP_LOW     (Showing Low Resolution graphs)$COL_RST"
-    }
 
+	if ($last_input.status -ne 'Success') {
+		# instead of the status line show last failure in red
+	echo "${col_hilite}Last ping failed: $($last_input.status)$COL_RST"
+	} else {
+		# show status if any
+		echo "$COL_IMP_LOW     $($script:status)$COL_RST"
+	}
 
     # display the RTT bar graph
     $graph_values =  @($RTT_values | select -last $script:EffBarsThatFit)
@@ -1069,6 +1077,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             # BUT AT LEAST FROM 100 SAMPLES if 1min has less
             $HistSamples = [math]::max(100, $PingsPerSec * 60)
         }
+		
+		configure_graph_charset
 
         # start one or more PS jobs in the background to continously ping the host
         # If you want to have N pings/sec we start N jobs in parallel,
@@ -1078,6 +1088,12 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         # Also: We use `Test-Connection -Ping` if it is available and fallback 
         # to `ping.exe` if it isn't
         $TestConnectionPingIsAvailable = ((Get-Command Test-Connection).Parameters['Ping'])
+		if (!($TestConnectionPingIsAvailable)) {
+			$script:status += "(ping.exe)"
+			echo "Will use ping.exe"
+		} else {
+			echo "Will use Test-Connection -ping"
+		}
         $jobs = (0..($PingsPerSec-1) | %{ start-job -ArgumentList ($_/$PingsPerSec), $Destination, $TestConnectionPingIsAvailable -ScriptBlock {
             $delay = $args[0]
             $Destination = $args[1]
@@ -1134,9 +1150,34 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             if ($TestConnectionPingIsAvailable) {
                 Test-Connection -Ping $Destination -Continuous
             } else {
-                ping -t $Destination | Convert-PingLines
+                ping.exe -t $Destination | Convert-PingLines
             }
         }})
+		
+		function Get-ChildProcesses($parent_pid) {
+			$children = (Get-WmiObject win32_process -filter "Name!='conhost.exe' AND ParentProcessId=$parent_pid" | select -property name, ProcessId)
+			if ($children) {
+				return ($children).ProcessId
+			}
+		}
+
+		echo "Finding children..."
+		# Every job we start starts a powershell.exe process 
+		# Each of them starts a conhost.exe and maybe a ping.exe
+		# These are the pids of all powershell.exe processes:		
+		$children_PS_pids = @()
+		$children_PS_pids += (Get-WmiObject win32_process -filter "Name='powershell.exe' AND ParentProcessId=$PID"`
+			| select -property ProcessId).ProcessId
+		echo "    $children_PS_pids"
+		# $children_PS_pids | %{ Show-Processes $_ } 
+		echo "Waiting for $($children_PS_pids.count) sec..."
+		sleep $children_PS_pids.count
+		echo "Finding grand children except conhost.exe if any..."
+		$grand_children = @()
+		$children_PS_pids | %{ $grand_children += (Get-ChildProcesses $_) }
+		echo "    $grand_children"
+		# $grand_children | %{ Show-Processes $_ } 
+		sleep 1
 
         # MAIN LOOP
         #--------------------------------------
@@ -1162,19 +1203,27 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     finally { # when done
         # AFTER A CTRL-C
         #-----------------------------------
-        $discarded_count = 0
         if ($jobs) {
+            write-host  -foregroundcolor white -backgroundcolor black "Cleaning up..."
+			$discarded_count = 0
             try {
-                $discarded_count=($jobs| receive-job).count
+                $discarded_count=($jobs| receive-job)
+				if ($discarded_count) {
+					$discarded_count=$discarded_count.count
+				}
             } catch {
-                $discarded_count=-1
+				Write-Host "Failed to retrieve output from background pings, $($error[0])"
             }
-        }
-        if ($jobs) {
-            write-host ""
-            Write-Host -foregroundcolor white -backgroundcolor black -nonewline "Stoping pings..."
-            Remove-Job $jobs -Force
-            write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings. All stoped"
+            Write-Host  "Stoping $($jobs.count) background pings $($grand_children)..."
+			# $grand_children | stop-process -force
+			# write-host "taskkill.exe /F /PID $($grand_children -join ' /PID ')"
+			if ($grand_children) {
+				# this will taskkill all ping.exe
+				iex "taskkill.exe /T /F /PID $($grand_children -join ' /PID ')" > $null
+			} 
+            Write-Host  "Removing jobs..."
+			Remove-Job $jobs -Force
+            write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings."
         }
     }
 }
