@@ -38,7 +38,6 @@ TODO: I can use this NON-BLOCKING code to read the last key pressed
 TODO: togle visibility of graphs when user presses [R]ealtime [H]histogram [B]aseline [J]itter 
 TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter 
       (A for the first press, B for the 2nd, C, ...)
-TODO: Count, save and display the total lost packets for the whole run time
 
 TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some parts of the code
     I take this into account and filter out 9999 values. See code with this expression:
@@ -946,7 +945,8 @@ function render_all($last_input) {
     [long]$secs = [math]::ceiling(($(get-date) - $SamplingStart).TotalSeconds)
 
     # display the header
-    $header = "$Title - $all_pings_cnt pings, $secs`", ~$($PingsPerSec)pings/s, min=$all_min_RTT, max=$($all_max_RTT)ms"
+    $header = "$Title - $all_pings_cnt pings, $secs`", ~$($PingsPerSec)pings/s, " + `
+        "min=$all_min_RTT, max=$($all_max_RTT)ms, lost=$all_lost_cnt"
     echo "$COL_H1$header$COL_RST"
 
 	if ($last_input.status -ne 'Success') {
