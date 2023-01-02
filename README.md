@@ -10,8 +10,8 @@ To just test your internet connection (pings google.com):
     
 To download and run with specific options for your case:
     
-    powershell -exec bypass -c ". {cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
-    powershell -exec bypass -c "cd $Env:USERPROFILE; .\Out-PingStats.ps1 -PingsPerSec 2 www.somehost.com"
+    powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
+    powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 2 www.somehost.com"
 
 ## POSSIBLE LIMITATION/BUG
 **It seems that if you run this script from multiple windows in parallel, pinging different targets, you get false reports of lost pings** and the realtime graph at the top does not get updated. I have not had time to verify and/or investigate.
