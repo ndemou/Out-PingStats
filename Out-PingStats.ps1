@@ -581,41 +581,22 @@ filter isNumeric($x) {
 function stats_of_series($series){
     # returns min, median, 95th percentile, max
     # TODO median is not real median if $series has even number of elements
-    $sorted = ($series | sort-object)
-    if ($sorted -and ($sorted -is [array])) {
-        $min =  $sorted[0]
-        $p5_position = ([int]($sorted.count * 0.05) -1)
-        $p5_position = [math]::max(0, $p5_position)
-        $p5 = $sorted[$p5_position]
-        $median = $sorted[[int]($sorted.count/2)]
-        $p95_position = ([int]($sorted.count * 0.95) -1)
-        $p95_position = [math]::max(0, $p95_position)
-        $p95 = $sorted[$p95_position]
-        $max = $sorted[-1]
-        return @{
-            min = $min;
-            p5 = $p5;
-            median = $median;
-            p95 = $p95;
-            max = $max;
-        }
-    } elseif (isNumeric($sorted)) {
-        return @{
-            min = $sorted;
-            p5 = $sorted;
-            median = $sorted;
-            p95 = $sorted;
-            max = $sorted;
-        }
-
-    } else {
-        return @{
-            min = $null;
-            p5 = $null;
-            median = $null;
-            p95 = $null;
-            max = $null;
-        }
+    $sorted = [array]($series | sort-object)
+    $min =  $sorted[0]
+    $p5_position = ([int]($sorted.count * 0.05) -1)
+    $p5_position = [math]::max(0, $p5_position)
+    $p5 = $sorted[$p5_position]
+    $median = $sorted[[int]($sorted.count/2)]
+    $p95_position = ([int]($sorted.count * 0.95) -1)
+    $p95_position = [math]::max(0, $p95_position)
+    $p95 = $sorted[$p95_position]
+    $max = $sorted[-1]
+    return @{
+        min = $min;
+        p5 = $p5;
+        median = $median;
+        p95 = $p95;
+        max = $max;
     }
 }
 function series_to_histogram($y_values) {
@@ -1203,9 +1184,9 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             write-host  -foregroundcolor white -backgroundcolor black "Cleaning up..."
 			$discarded_count = 0
             try {
-                $discarded_count=($jobs| receive-job)
+                $discarded_count = [array]($jobs| receive-job)
 				if ($discarded_count) {
-					$discarded_count=$discarded_count.count
+					$discarded_count = $discarded_count.count
 				}
             } catch {
 				Write-Host "Failed to retrieve output from background pings, $($error[0])"
