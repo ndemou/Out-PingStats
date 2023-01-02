@@ -1,5 +1,5 @@
 <#
-v0.9.3
+v0.9.4
 
 TODO: Save files in %temp% by default
       and add argument to change folder
@@ -155,6 +155,7 @@ $DebugMode=0
 $script:AggPeriodSeconds = 0
 $script:status = ""
 
+
 function std_num_le($x) {
     # select the maximum of these standard numbers that is 
     # Less-than or Equal to $x
@@ -282,6 +283,7 @@ function configure_graph_charset {
     }
 }
 
+
 function Format-PingTimes {
 <#
 .SYNOPSIS
@@ -355,8 +357,9 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
     }
     process {
         $Items  | %{
-            if ($_.status -eq 'Success') {
-                [int]$ms = $_.latency
+            #echo $_, ($_.Status -eq 'Success')
+            if ($_.Status -eq 'Success') {
+                [int]$ms = $_.RoundtripTime
                 if ($ms -lt $all_min_RTT) {$all_min_RTT=$ms}
                 if ($ms -gt $all_max_RTT) {$all_max_RTT=$ms}
                 $all_pings_cnt += 1
@@ -949,9 +952,9 @@ function render_all($last_input) {
         "min=$all_min_RTT, max=$($all_max_RTT)ms, lost=$all_lost_cnt"
     echo "$COL_H1$header$COL_RST"
 
-	if ($last_input.status -ne 'Success') {
+	if ($last_input.Status -ne 'Success') {
 		# instead of the status line show last failure in red
-	echo "${col_hilite}Last ping failed: $($last_input.status)$COL_RST"
+	echo "${col_hilite}Last ping failed: $($last_input.Status)$COL_RST"
 	} else {
 		# show status if any
 		echo "$COL_IMP_LOW     $($script:status)$COL_RST"
@@ -1057,80 +1060,76 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 		
 		configure_graph_charset
 
-        # start one or more PS jobs in the background to continously ping the host
-        # If you want to have N pings/sec we start N jobs in parallel,
-        # one after the other with 1000/N msec delay each.
-        # (Note that although the pings are evenly spaced when we start
-        # after a while this is not guarantied)
-        # Also: We use `Test-Connection -Ping` if it is available and fallback 
-        # to `ping.exe` if it isn't
-        $TestConnectionPingIsAvailable = ((Get-Command Test-Connection).Parameters['Ping'])
-		if (!($TestConnectionPingIsAvailable)) {
-			$script:status += "(ping.exe)"
-			echo "Will use ping.exe"
-		} else {
-			echo "Will use Test-Connection -ping"
-		}
-        $jobs = (0..($PingsPerSec-1) | %{ start-job -ArgumentList ($_/$PingsPerSec), $Destination, $TestConnectionPingIsAvailable -ScriptBlock {
-            $delay = $args[0]
-            $Destination = $args[1]
-            $TestConnectionPingIsAvailable = $args[2]
+        $jobs = (
+        start-job -ArgumentList $PingsPerSec, $Destination, `
+            -ScriptBlock {
 
-            function Convert-PingLines {
-                <# Pipe the output of ping to this function and you get output similar to Test-Connection -Ping
-                   For compatibility with systems that don't have Test-Connection -Ping #>
-                [CmdletBinding()]
-                param (
-                    [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)]
-                    [object[]]$Items
-                )
-                begin {
-                    $PingLines_address=""
-                    $PingLines_IgnoreTheRest = $false
-                }
-                process {
-                    $Items  | %{
-                        if (!($PingLines_IgnoreTheRest)) {
-                            $out = [PSCustomObject]@{status=$null; address=$PingLines_address; latency=$null}
-                            if ($_ -like '*time=*' -or $_ -like '*time<*') {
-                                [int]$ms=($_ -replace '^.*time[=<]','' -replace '[a-z].*$')
-                                $out.latency = $ms
-                                $out.status = "Success"
-                                $out.address = $PingLines_address
-                                $out
-                            } elseif ($_ -like 'Pinging *') {
-                                # first line (Pinging <host> with <N> bytes of data)
-                                # we get the <host> part
-                                $dest_host = ($_ -replace 'Pinging ','' -replace ' with .*','')
-                                if ($dest_host -match '\[') {$dest_host = ($dest_host -replace ' \[.*','' -replace ' ','')}
-                                $PingLines_address = $dest_host
-                            } elseif ($_.trim() -eq '') {
-                                # ignore empty lines in input
-                            } elseif ($_ -like "Ping statistics for*") {
-                                $PingLines_IgnoreTheRest = $true
-                            } else {
-                                # Failure (e.g. a timeout or anything else except a reply)
-                                $out.latency = 0
-                                $out.status = $_
-                                $out.address = $PingLines_address
-                                $out
-                            }
+                Function Start-SpecialPing {
+                    # Allows custom interval with msec accuracy.
+                    # Will try hard to send 1000/$Interval pings per second
+                    # by adjusting the delay between two consequtive pings.
+                    # NOTE that in case of failure, it does not return 0 but
+                    # the elapsed time 
+                    Param(
+                        [string]$ComputerName="8.8.8.8",
+                        [int]$TimeOut = 500,
+                        [int]$Interval = 50
+                    )
+
+                    $ping_count = 0
+                    $ts_first_ping = (Get-Date)
+                    while ($True) {
+                        $ts_start = (Get-Date)
+                        # $ts_start.ticks / 10000 milliseconds counter
+                        $Ping = [System.Net.NetworkInformation.Ping]::New()
+                        $ret = $Ping.Send($ComputerName, $TimeOut)
+                        $ts_end = (Get-Date)
+                        $ping_count += 1
+                        if ($ret.Status -ne 'Success') {
+                            $RoundtripTime = [int](($ts_end.ticks - $ts_start.ticks)/10000)
+                        } else {
+                            $RoundtripTime = $ret.RoundtripTime
                         }
 
+                        if ($ping_count -eq 1) {
+                            $total_elapsed_ms = $RoundtripTime
+                            $expected_elapsed_ms = 0
+                            $diff = $RoundtripTime
+                            $ts_first_ping = $ts_start
+                        } else {
+                            $total_elapsed_ms = [int](($ts_end.ticks - $ts_first_ping.ticks)/10000)
+                            $expected_elapsed_ms = [int](($ping_count-1) * $Interval)
+                            $diff = $total_elapsed_ms - $expected_elapsed_ms
+                        }
+
+                        $sleep_ms = [math]::max(0, $Interval - $diff)
+                        # return this:
+                        [PSCustomObject]@{RoundtripTime = $RoundtripTime; `
+                            Status=$ret.Status.tostring(); `
+                            ts_start = $ts_start; `
+                            ping_count=$ping_count
+                        }
+<# this is good for debugging only
+        [PSCustomObject]@{RoundtripTime = $RoundtripTime; `
+            Status=$ret.Status; `
+            ts_start = $ts_start; `
+            ping_count=$ping_count; `
+            total_ms=$total_elapsed_ms; 
+            expected_ms=$expected_elapsed_ms; `
+            diff=($total_elapsed_ms - $expected_elapsed_ms); `
+            sleep_ms = $sleep_ms
+            }
+#>
+                        if ($sleep_ms -gt 0) {start-sleep -Milliseconds $sleep_ms}
+                        
                     }
                 }
-                end {
-                }
+                $PingsPerSec = $args[0]
+                $Destination = $args[1]
+                Start-SpecialPing  -Interval (1000/$PingsPerSec) -TimeOut 500 -ComputerName $Destination
             }
-
-            sleep $delay
-            if ($TestConnectionPingIsAvailable) {
-                Test-Connection -Ping $Destination -Continuous
-            } else {
-                ping.exe -t $Destination | Convert-PingLines
-            }
-        }})
-		
+        )            
+        
 		function Get-ChildProcesses($parent_pid) {
 			$children = (Get-WmiObject win32_process -filter "Name!='conhost.exe' AND ParentProcessId=$parent_pid" | select -property name, ProcessId)
 			if ($children) {
@@ -1138,24 +1137,22 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 			}
 		}
 
-		echo "Finding children..."
-		# Every job we start starts a powershell.exe process 
-		# Each of them starts a conhost.exe and maybe a ping.exe
-		# These are the pids of all powershell.exe processes:		
-		$children_PS_pids = @()
-		$children_PS_pids += (Get-WmiObject win32_process -filter "Name='powershell.exe' AND ParentProcessId=$PID"`
-			| select -property ProcessId).ProcessId
-		echo "    $children_PS_pids"
-		# $children_PS_pids | %{ Show-Processes $_ } 
-		echo "Waiting for $($children_PS_pids.count) sec..."
-		sleep $children_PS_pids.count
-		echo "Finding grand children except conhost.exe if any..."
-		$grand_children = @()
-		$children_PS_pids | %{ $grand_children += (Get-ChildProcesses $_) }
-		echo "    $grand_children"
-		# $grand_children | %{ Show-Processes $_ } 
-		sleep 1
-
+        echo "Finding children..."
+        # Every job we start starts a powershell.exe process 
+        # Each of them starts a conhost.exe
+        # These are the pids of all powershell.exe processes:		
+        $children_PS_pids = @()
+        $children_PS_pids += (Get-WmiObject win32_process -filter "Name='powershell.exe' AND ParentProcessId=$PID"`
+            | select -property ProcessId).ProcessId
+        echo "    $children_PS_pids"
+        # $children_PS_pids | %{ Show-Processes $_ } 
+        echo "Waiting for $($children_PS_pids.count) sec..."
+        echo "Finding grand children except conhost.exe if any..."
+        $grand_children = @()
+        $children_PS_pids | %{ $grand_children += (Get-ChildProcesses $_) }
+        echo "    $grand_children"
+        # $grand_children | %{ Show-Processes $_ } 
+        
         # MAIN LOOP
         #--------------------------------------
         # We collect the output of the ping-jobs (see above)
@@ -1191,7 +1188,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             } catch {
 				Write-Host "Failed to retrieve output from background pings, $($error[0])"
             }
-            Write-Host  "Stoping $($jobs.count) background pings $($grand_children)..."
+            Write-Host  "Stoping background pings $($grand_children)..."
 			# $grand_children | stop-process -force
 			# write-host "taskkill.exe /F /PID $($grand_children -join ' /PID ')"
 			if ($grand_children) {
