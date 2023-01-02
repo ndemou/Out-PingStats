@@ -1,5 +1,5 @@
 <#
-v0.9.2
+v0.9.3
 
 TODO: Save files in %temp% by default
       and add argument to change folder
