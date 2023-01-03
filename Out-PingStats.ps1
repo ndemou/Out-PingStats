@@ -1,6 +1,9 @@
 <#
 v0.9.5
 
+TODO: Addd a mode of operation where we ping a few different hosts and 
+      record as RTT the min or medial RTT of all. This will assure that
+      issues at one host will not "tante" our perception of the link quality
 TODO: Save files in %temp% by default
       and add argument to change folder
 TODO: Don't write stats to ps1, just print screen to .txt
