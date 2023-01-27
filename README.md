@@ -11,7 +11,7 @@ To just test your internet connection (pings google.com):
 To download and run with specific options for your case:
     
     powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
-    powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 2 www.somehost.com"
+    powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 10.1.1.1"
 
 ## How to use
     Out-PingStats   # by default it pings google.com at 5 pings per sec
