@@ -1717,4 +1717,3 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 }
 
 Out-PingStats @args
-
