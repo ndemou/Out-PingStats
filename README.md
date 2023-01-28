@@ -4,18 +4,21 @@ A PowerShell program to evaluate LAN or Internet quality. It displays plenty of 
 
 ## For the impatient
 
-To just test your internet connection (pings google.com):
+To just test your internet connection:
 
     powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
     
-To download and run with specific options for your case:
+To download and run with specific options for your case (e.g. to ping a host on your LAN):
     
     powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
     powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 10.1.1.1"
 
 ## How to use
-    Out-PingStats   # To test Internet quality 
-    Out-PingStats -PingsPerSec 4 10.1.1.1 # To test WIFI/ethernet connection quality to host 10.1.1.1
+    # To test Internet quality 
+    Out-PingStats   
+    
+    # To test WIFI/ethernet connection quality by pinging 10.1.1.1 (a host in your LAN)
+    Out-PingStats -PingsPerSec 4 10.1.1.1 
 
 ## Example output 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
