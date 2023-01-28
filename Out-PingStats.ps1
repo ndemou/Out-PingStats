@@ -6,7 +6,6 @@ FIXME: I have a memory leak somewhere in the main code (1GB of RAM in about half
 ***********************************************
 
 TODO: I have QnD code for DNSQuery -- add switch option to select it
-TODO: Make the DNSQuery similar to MultiPings (querying 3 servers in parallel)
     
 ABOUT My algorithm for RTT Normalization 
        When I am getting RTTs from one and then another host with different RTTs
@@ -1716,4 +1715,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     }
 }
 
-Out-PingStats @args
+if (!(Get-Module ThreadJob -list)) {
+    echo "Please install ThreadJob module by issuing this command with admin priviledges:`nInstall-Module -Name ThreadJob"
+} else {
+    Out-PingStats @args
+}
