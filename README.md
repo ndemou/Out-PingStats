@@ -1,6 +1,6 @@
 # Out-PingStats
 
-A PowerShell program to ping a host and display plenty of text and pseudo graphical statistics about the short and long-term quality of the connection
+A PowerShell program to evaluate LAN or Internet quality. It displays plenty of text and pseudo graphical statistics about the short and long-term quality of your connection. By default it performs DNS queries to many free DNS servers and aggregates the response times (RTT) in a smart way. This is useful to test your Internet quality. If you want to test your ethernet/WIFI network quality you can specify a host that responds to pings. it will present the same quality metrics but this time for the ping RTTs.
 
 ## For the impatient
 
@@ -14,17 +14,17 @@ To download and run with specific options for your case:
     powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 10.1.1.1"
 
 ## How to use
-    Out-PingStats   # by default it pings google.com at 5 pings per sec
-    Out-PingStats www.somehost.com 
+    Out-PingStats   # To test Internet quality 
+    Out-PingStats -PingsPerSec 4 10.1.1.1 # To test WIFI/ethernet connection quality to host 10.1.1.1
 
 ## Example output 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
 ## Understanding the graphs
 
-The **LAST RTTs** graph at the top shows one bar for every ping.
+The **LAST RTTs** graph at the top shows one bar for every ping/DNS query.
 It's a bit better than looking at the text output of the ping command.
-Lost packets will appear as a bar of red stars: 
+Timeouts/lost packets will appear as a bar of red stars: 
 
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
@@ -92,13 +92,18 @@ and then configute your PowerShell terminal to use it.
     -PingsPerSec
 
 Pings per second to perform.
+
+In DNS query mode (the default if you don't specify a host) you can only select 1 (the default) or 2.
+
 Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
 
 A) Code that renders the screen is rather slow and ping replies will pile up
   (when you stop the program, take a note of "Discarded N pings" message.
   If N is more than two times your PingsPerSec you've hit this gotcha)
 
-B) The destination host may drop some of your ICMP echo requests(pings)
+B) The destination host will drop some of your ICMP echo requests(pings)
+
+For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 
     -Title "My pings"   (by default the host you ping)
     -GraphMax 50 -GraphMin 5    (by default they adjust automatically)
@@ -111,8 +116,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
 # Other details
 
-The script records statistics in a file named like `google.com.2022-12-16_19.01.21.ps1`.
-You need to first source the script then run this PS file to view the statistics.
+## Parallel pings/smart aggreagation
+
+When checking internet quality this script tries hard to be resilient to problems that are specific to a specific DNS server. To that end it will run more than 5 DNS query jobs in parallel. Each job queries 4 different hosts one after the other every second. If at least one reply is received we consider it a success. If more than one replies comes through we take into acount only the minimum RTT. Also we use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+
+## Saved statistics
 
 The script records every ping response to a text file named like:
 `google.com.2022-12-16_19.01.21.pingtimes.
