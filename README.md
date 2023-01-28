@@ -121,7 +121,51 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 
 ## Parallel pings/smart aggreagation
 
-When checking internet quality this script tries hard to be resilient to problems that are specific to a specific DNS server. To that end it will run more than 5 DNS query jobs in parallel. Each job queries 4 different hosts one after the other every second. If at least one reply is received we consider it a success. If more than one replies comes through we take into acount only the minimum RTT. Also we use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+When checking internet quality this script tries hard to be resilient to problems of specific DNS servers. To that end it will run more than 5 DNS query jobs in parallel. Each job queries a DNS server every second but it changes between 4 servers (in order to overload one of them). If at least one reply is received we consider it a success. If more than one replies comes through we take into acount only the minimum RTT. Also we use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+
+### About the algorithm for RTT Normalization 
+
+When we are getting RTTs from one and then another host with different RTTs
+it will appear as though there is jitter. To minimize the effect I had 
+this idea:
+
+  1) Keep the last 10 or 20 successfull RTTs from each host.
+  2) Calculate the min of all these RTTs.
+  3) Calculate the average of all the minimums.
+  4) Adjust the real RTT values by moving them towards the 
+average of all the minimums by as many msec as their min is away from
+the average min. 
+
+Example: 
+
+Say that during the last 10 pings the min RTT of 3 hosts are like this:
+              <----Last 10 RTTs----------->  Min Avg Avg-Min
+    - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
+    - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
+    - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
+
+The value "Avg" above is the average of the three minimums (50 = (40+50+60)/3)
+
+Assuming that the minimums where the same before, then the Effective 
+RTTs will be calculated like this:
+
+    - host1 : 50 52 60 55 51 50 52 60 55 51 
+    - host2 : 53 53 50 56 52 51 53 51 56 52 
+    - host3 : 51 51 50 54 50 52 51 53 54 50 
+       
+Note that since we adjust the real RTTs by an amount that depends 
+on a _slow_ changing average (the average of the minimum of the last _N_ RTTs) 
+their variability is only slightly affected by the tiny amount of fluctuation 
+that the average is experiencing.
+Note also that MultiPings is reporting to main code just one RTT value
+from the 3 hosts (the min RTT). Then the main code calculates the jitter 
+based on this artificial/agregate RTT value. I _think_ that this 
+is better than taking the jitter for every host. Especially for MultiDnsQueries
+code I have seen that every few seconds I get a sporadic slow reply from every DNS
+server. This will register as two strong jitter measurements but it's more
+plausible that this slow reply is due to the DNS application rather than due 
+to the network (DNS is not as simple as ping). By keeping just the min(RTT) of all
+parallel DNS queries we mostly suppress such sporadic spikes. 
 
 ## Saved statistics
 
