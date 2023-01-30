@@ -1,5 +1,5 @@
 <#
-    v0.10.5
+    v0.10.6
 
 ***********************************************
 FIXME: There's a slow memory leak somewhere in 
@@ -298,6 +298,11 @@ Function Start-MultiDnsQueries {
             $ts_end = (Get-Date)
             if ($status -eq 'Success') {
                 $RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
+                if ($RTT -gt $Interval) {
+                    # RTT is so big that we consider it a failure
+                    $RTT  = 9999
+                    $status = 'Failed'
+                }
             } else {
                 $RTT = 9999
             }
