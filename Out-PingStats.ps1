@@ -1674,7 +1674,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 }
             }
             }
-            }  | Format-PingTimes `
+            } <# | Format-PingTimes `
                 -PingsPerSec $PingsPerSec `
                 -Destination $Target `
                 -UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax `
@@ -1715,8 +1715,4 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     }
 }
 
-if (!(Get-Module ThreadJob -list)) {
-    echo "Please install ThreadJob module by issuing this command with admin priviledges:`nInstall-Module -Name ThreadJob"
-} else {
-    Out-PingStats @args
-}
+Out-PingStats @args
