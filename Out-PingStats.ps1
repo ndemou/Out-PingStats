@@ -1,51 +1,13 @@
 <#
-    v0.10.4
+    v0.10.5
 
 ***********************************************
-FIXME: I have a memory leak somewhere in the main code (1GB of RAM in about half a day)
+FIXME: There's a slow memory leak somewhere in 
+the main code (0.8MB/min)
 ***********************************************
 
 TODO: I have QnD code for DNSQuery -- add switch option to select it
-    
-ABOUT My algorithm for RTT Normalization 
-       When I am getting RTTs from one and then another host with different RTTs
-       it will appear as though there is jitter. To minimize the effect I had 
-       this idea:
-       Keep the last 10 or 20 successfull RTTs from each host.
-       Calculate the min of all these RTTs.
-       Calculate the average of all the minimums.
-       Finaly adjust the actual RTT values I read by moving them towards the 
-       average of all the minimums by as many msec as their min is away from
-       the average min. 
-       Example: 
-       Say that during the last 10 pings the min RTT of 3 hosts are like this:
-                  <----Last 10 RTTs----------->  Min Avg Avg-Min
-        - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
-        - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
-        - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
-       Above Avg is the average of the three minimums (50 = (40+50+60)/3)
-       Assuming that the minimums where the same before, then the Effective 
-       RTTs will be calculated like this:
-        - host1 : 50 52 60 55 51 50 52 60 55 51 
-        - host2 : 53 53 50 56 52 51 53 51 56 52 
-        - host3 : 51 51 50 54 50 52 51 53 54 50 
 
-       In general I calculate the effective RTT like this:
-       $eff_host_RTT = [math]::max(0, $host_real_RTT + ($average_of_all_mins - $host_min_RTT))
-       
-       Note that since I adjust the real RTTs by an amount that depends 
-       on a _slow_ changing average (the average of the minimum of the last N RTTs) 
-       their variability is only slightly affected by the tiny amount of fluctuation 
-       that the average is experiencing.
-       Note also that MultiPings is reporting to main code just one RTT value
-       from the 3 hosts (the min RTT). Then the main code calculates the jitter 
-       based on this artificial/agregate RTT value. I _THINK_ however that this 
-       is better than taking the jitter for every host. Especially for MultiDnsQueries
-       code I have seen that every few seconds I get a sporadic slow reply from a DNS
-       server. This will register as two strong jitter measurements but it's more
-       plausible that this slow reply is due to the DNS application running on the 
-       server rather than due to the network (DNS is not as simple as ping).
-       
 TODO: Save files in %temp% by default
       and add argument to change folder
 TODO: Don't write stats to ps1, just print screen to .txt
@@ -1674,7 +1636,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 }
             }
             }
-            } <# | Format-PingTimes `
+            } | Format-PingTimes `
                 -PingsPerSec $PingsPerSec `
                 -Destination $Target `
                 -UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax `
@@ -1682,7 +1644,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 -AggregationSeconds $AggregationSeconds -HistSamples $HistSamples `
                 -DebugMode $DebugMode -BarGraphSamples $BarGraphSamples `
                 -HighResFont $script:HighResFont
-                #>
     }
     finally { # when done
         # AFTER A CTRL-C
@@ -1715,4 +1676,9 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     }
 }
 
+if (!(Get-Module ThreadJob -list)) {
+    echo "Please install ThreadJob module by issuing this command with admin priviledges:`nInstall-Module -Name ThreadJob"
+} else {
+    Out-PingStats @args
+}
 Out-PingStats @args
