@@ -1,22 +1,18 @@
 <#
-    v0.10.6
-
-***********************************************
-FIXME: There's a slow memory leak somewhere in 
-the main code (0.8MB/min)
-***********************************************
-
-TODO: I have QnD code for DNSQuery -- add switch option to select it
+    v0.10.7
 
 TODO: Save files in %temp% by default
       and add argument to change folder
-TODO: Don't write stats to ps1, just print screen to .txt
-TODO: When multiple scripts run simultaneously sync Y-max for all graphs
-TODO: Option to read input from saved file 
-TODO: Hide histogram if console height is not enough
 TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
+TODO: Collect failures per target and display the top 3 or so failed%
+      (instead of showing the drops as they happen in stderr like I do)
+      (maybe show them next to the histogram)
 TODO: Keep more (e.g. 100) slow data graphs that fit the screen and show them
       if the window is enlargeds
+TODO: Maybe don't write stats to ps1, just print screen to .txt
+TODO: Maybe when multiple scripts run simultaneously sync Y-max for all graphs
+TODO: Option to read input from saved file 
+TODO: Hide histogram if console height is not enough
 TODO: While we collect enough data points to have a decent histogram 
       we do present the histogram. After that point we change visualization:
       Now every block that used to show the histogram has a color that 
@@ -58,6 +54,8 @@ TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some part
     I don't always do it however. One case that this hurts is when deciding the max time
     to display on the histogram (without a user provided -GraphMax).
 
+TODO: After running for 8hrs this code increased its RAM usage by 30MB
+
 TODO: I could probably add a heatmap with 2 periods per character.
     If one period is the default 2min then with 15chars I can cover 1 hour.
     I am not sure how to convert the RTT, jitter and loss of 2mins to ONE color though
@@ -65,6 +63,42 @@ TODO: I could probably add a heatmap with 2 periods per character.
     I can come up with a color for perfect, very good, good, poor, bad, very bad
     (NOTE to self: If I need a color scale I can use color scales A) or B)
     from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
+#>
+
+<# Re: targets for pinging & DNS querying
+   ===========================================
+   The hosts of one line are queried/pinged in order ONE AFTER THE OTHER
+   Every line is queried/pinged IN PARALLEL WITH EVERY OTHER LINE
+   It's best to have at least 4 hosts in each line so that if you ping
+   every 1/2sec you are pinging each host at a slow pace of 1 ping per 2 seconds
+   
+   Don't add a DNS server to both lists even if it responds to pings
+   They seem to throtle their packets per second
+#>
+$DNS_TARGET_LIST = @(`
+    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4'        ),
+    @('208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'        ),
+    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ),
+    @('185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
+    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ),
+    @('216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
+    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ),
+    @('216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
+    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ),
+    @('195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   ),
+    @('77.88.8.88',      '77.88.8.2',       '77.88.8.7',       '77.88.8.3'      )
+)
+# Numeric IPs below are from EUROPE
+# https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
+$PING_TARGET_LIST = @(`
+    @('95.142.107.181', '185.206.224.67', '195.201.213.247', '5.152.197.179' ),
+    @('92.204.243.227', '195.12.50.155',  '46.248.187.100', 'hi.com'         ),
+    @('facebook.com'  , 'bc.com'        , 'google.com'    , 'cd.com'         ),
+    @('outlook.com',    'gmail.com',      'ef.com',         'mn.com'         )
+)
+<#
+  BAD DNS servers 
+  '84.200.70.40','91.239.100.100', '89.233.43.71'
 #>
 
 # Re: colored printing
@@ -299,7 +333,12 @@ Function Start-MultiDnsQueries {
             if ($status -eq 'Success') {
                 $RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
                 if ($RTT -gt $Interval) {
-                    # RTT is so big that we consider it a failure
+                    # RTT is so big that we can as well consider it a failure
+                    # (If we don't we create a mess in the main loop where
+                    # some late responses are interleaved between good responses)
+                    # (Resolve-DnsName does offer a -TimeOut option,
+                    # QuickTimeout seems to allow about 7-8sec timeout which is huge
+                    # for our purpose)
                     $RTT  = 9999
                     $status = 'Failed'
                 }
@@ -561,12 +600,23 @@ function std_num_le($x) {
 function std_num_ge($x) {
     # select the maximum of these standard numbers that is 
     # Greater-than or Equal to $x
-    # 1,2,5, 10,20,50, 100,200,500, 1000,2000,5000, ...
+    # 1.5, 3, 6, 9,  15, 30, 60, 90,  150, 300, 600, 900, ...
+    # I have no idead how this code works (yes I wrote it)
     $power = [math]::ceiling([math]::log($x + 1, 10))
     $candidate = [math]::pow(10, $power)
-    if ($candidate/5 -ge $x) {$candidate = $candidate / 5}
-    if ($candidate/2 -ge $x) {$candidate = $candidate / 2}
-    $candidate
+    <# ^^^ these two lines do this magic:
+    The $candidate for $x=  9 is   10
+    The $candidate for $x= 10 is  100
+    The $candidate for $x= 20 is  100
+    The $candidate for $x= 90 is  100
+    The $candidate for $x=100 is 1000
+                          ...     ...
+    #>
+    if (($candidate*1.5 -ge $x) -and ($candidate*0.9  -lt $x)) {return ($candidate * 1.5)}
+    if (($candidate*0.9 -ge $x) -and ($candidate*0.6  -lt $x)) {return ($candidate * 0.9)}
+    if (($candidate*0.6 -ge $x) -and ($candidate*0.3  -lt $x)) {return ($candidate * 0.6)}
+    if (($candidate*0.3 -ge $x) -and ($candidate*0.15 -lt $x)) {return ($candidate * 0.3)}
+    return ($candidate * 0.15)
 }
 function aprox_num($num) {
     # rounds $num to "enough" decimals
@@ -1058,7 +1108,6 @@ function render_slow_updating_graphs() {
     $stats = (stats_of_series $Jitter_values)
     $y_min = 0
     $y_max = 30
-    if ($stats.max -le 10) {$y_max = 10}
     render_bar_graph @($Jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null `
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
 }
@@ -1096,6 +1145,16 @@ function render_all($last_input, $PingsPerSec) {
     if ($GraphMin -ne -1) {$y_min = $GraphMin}
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
     render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
+
+    # display the RespondersCnt bar graph
+    $graph_values =  @($RespondersCnt_values | select -last $script:EffBarsThatFit)
+    #echo ([string][char]9472*75)
+    $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>"
+    # decide Y axis limits
+    $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
+    ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
+    $y_max = (y_axis_max $stats.min $stats.max 0 9)
+    render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 6 15
 
     # display the histogram
     if ($RTT_values.count) {
@@ -1177,6 +1236,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $ScrUpdPeriodStart = $AggPeriodStart
 
         $RTT_values = New-Object System.Collections.Queue
+        $RespondersCnt_values = New-Object System.Collections.Queue
         $ToSave_values = @()
         $Variance_values = New-Object System.Collections.Queue
         $Baseline_values = New-Object System.Collections.Queue
@@ -1222,6 +1282,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 # populate $RTT_values
                 #-----------------------------
                 $RTT_values.enqueue($ms)
+                $RespondersCnt_values.enqueue($_.bucket_ok_pings)
                 # ignore the first 10 pings (the sometimes bumpy start)
                 if (($RTT_values.count -eq 11) -and !$bumpy_start_cleanup_done) {
                     $bumpy_start_cleanup_done = $true
@@ -1229,11 +1290,17 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                     $RTT_values.enqueue($ms)
                     $all_pings_cnt = 1
                     $all_lost_cnt  += [math]::min($all_lost_cnt,1)
+                    
+                    $RespondersCnt_values.clear()
+                    $RespondersCnt_values.enqueue($_.bucket_ok_pings)
                 }
 
                 $ToSave_values += @($ms)
                 # keep at most $script:EffBarsThatFit measurements in RTT_values
-                while ($RTT_values.count -gt $max_values_to_keep) {$foo = $RTT_values.dequeue()}
+                while ($RTT_values.count -gt $max_values_to_keep) {
+                    $foo = $RTT_values.dequeue()
+                    $foo = $RespondersCnt_values.dequeue()
+                }
             }
 
             # other things to do with input
@@ -1464,63 +1531,33 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                             -Target $target
                     }
             ) #>
-        } elseif ($false) {
-            # TODO: DEAD CODE -add option to select between MultiPind/MultiDNS
-            $jobs =        @($null, $null, $null)
-            $target_list = @(`
-                @('8.8.8.8'       , '208.67.222.222', '4.2.2.2'       , '1.1.1.1'       , '8.8.4.4'       ),
-                @('208.67.220.220', '1.0.0.1'       , 'hi.com'        , 'outlook.com'   , '4.2.2.1'       ),
-                @('facebook.com'  , 'hi.com'        , 'bc.com'        , 'google.com'    , 'gmail.com'     )
-                )
-            $TwicePerSec = $false
-            if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
-            @(0,1,2) | %{
-                $jobs[$_] = (
-                    start-job -ArgumentList $PingsPerSec, $target_list[$_], $CodeOfMultiPings -ScriptBlock {
-                            $PingsPerSec = $args[0]
-                            $target = $args[1]
-                            $CodeOfMultiPings = $args[2]
-                            . Invoke-Expression $CodeOfMultiPings
-                            $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
-                            Start-MultiPings -target $target 
-                        }
-                    )            
-            }
         } else {
-            <#
-            BAD ONES
-                                ,  '84.200.70.40','91.239.100.100', '89.233.43.71'
-                            
 
-            #>
-            $target_list = @(`
-                @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4'        ),
-                @('208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'        ),
-                @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ),
-                @('185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
-                @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ),
-                @('216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
-                @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ),
-                @('216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
-                @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ),
-                @('195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   ),
-                @('77.88.8.88',      '77.88.8.2',       '77.88.8.7',       '77.88.8.3'      )
-            )
+            $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
             $jobs = @()
-            $idx = 0
-            $target_list | %{
-                $jobs += $null
-                $jobs[$idx] = (
-                Start-ThreadJob -ThrottleLimit $target_list.count -ArgumentList $PingsPerSec, $target_list[$idx], $CodeOfMultiDnsQueries -ScriptBlock {
+            $DNS_TARGET_LIST | %{
+                $jobs += @((
+                    Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiDnsQueries -ScriptBlock {
                         $PingsPerSec = $args[0]
                         $target = $args[1]
                         $CodeOfMultiDnsQueries = $args[2]
                         . Invoke-Expression $CodeOfMultiDnsQueries
                         $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
                         Start-MultiDnsQueries -target_list $target
-                        }
-                )            
-                $idx += 1
+                    }
+                ))
+            }
+            $PING_TARGET_LIST | %{
+                $jobs +=  @((
+                    Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiPings -ScriptBlock {
+                            $PingsPerSec = $args[0]
+                            $target = $args[1]
+                            $CodeOfMultiPings = $args[2]
+                            . Invoke-Expression $CodeOfMultiPings
+                            $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
+                            Start-MultiPings -target $target 
+                    }
+                ))
             }
         }
         
