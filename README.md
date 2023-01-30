@@ -121,7 +121,10 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 
 ## Parallel pings/smart aggreagation
 
-When checking internet quality this script tries hard to be resilient to problems of specific DNS servers. To that end it will run more than 5 DNS query jobs in parallel. Each job queries a DNS server every second but it changes between 4 servers (in order to overload one of them). If at least one reply is received we consider it a success. If more than one replies comes through we take into acount only the minimum RTT. Also we use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+When checking internet quality this script tries hard to be resilient to problems of specific DNS servers. To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second (it has 4 hosts to switch between). 
+This way it will not overload any one of them and thus it will not be blocked by anyone. 
+If at least two replies are received we consider it a success. For all the replies that we get in one batch/group we take into acount only the minimum RTT. 
+We also use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
 
 ### About the algorithm for RTT Normalization 
 
