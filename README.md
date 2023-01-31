@@ -3,14 +3,17 @@
 A PowerShell program to evaluate the quality of your connection to the Internet (default behaviour) or to another specific host. 
 Out-PingStats displays detailed terminal graphs about the short and long-term quality of your connection (response time, loss and jitter). 
 
+![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
+
 This program is perfect if:
 
- * You want to evaluate a connection for more than a few dozen seconds (Out-PingStats aggregates measurements every 2minutes and can display nicely a few hours of data)
- * You are evaluating a busy network (in which case pinging some well known host (like google.com, 1.1.1.1, etc) may result in sporadic packet loss. I have seen in many situations that although my uplink has no problem google.com, 1.1.1.1 and similar will drop pings and DNS query packets and I suspect that they are throtiling my packets when other devices in the network are hitting them with too many DNS queries or pings. 
+ * You want to evaluate a connection for more than a few dozen seconds.
+ * You are evaluating a busy network.
 
-To evaluate your connection to the Internet it queries more than a dozen hosts (specificaly it performs DNS queries to many free DNS servers and also pings many different hosts). Then it aggregates the response times (RTT) from all this tens of hosts in a smart way and plots easy to understand graphs. 
+ * When evaluating for more than a few dozen seconds, Out-PingStats will smartly aggregate measurements every 2minutes and can display nicely a few hours of data.
+ * When evaluating a busy network, by e.g. pinging some well known host like google.com, 1.1.1.1 etc, you may see sporadic packet loss on an otherwise perfectly working lin. In many cases I have personaly seen these hosts droping pings and DNS query packets. I suspect that they are throtiling  packets when many devices behind the same public IP are hitting them hard with DNS queries or pings. Out-PingStats is immune to this phenomenon because it queries/pings more than a dozen different hosts and smartly aggregates the response times (RTT).
 
-To evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you can specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case it will only ping the specified host (e.g. your default gateway).
+If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
 
 ## For the impatient
 
@@ -18,7 +21,7 @@ To evaluate your connection to a specific host (e.g. when you want to test your 
 
     Install-Module -Name ThreadJob # Run from an elevated PowerShell
     
-### Test:
+### Try it out
 
    1. Quick'n'dirty test of your internet connection:
 
@@ -36,9 +39,6 @@ To evaluate your connection to a specific host (e.g. when you want to test your 
     
     # To test network connection to 10.1.1.1 by pinging at 4 pings per second:
     Out-PingStats -PingsPerSec 4 10.1.1.1 
-
-## Example output 
-![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
 ## Understanding the graphs
 
