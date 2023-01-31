@@ -17,20 +17,20 @@ If you want to evaluate your connection to a specific host (e.g. when you want t
 
 ## For the impatient
 
-### Install depedencies 
+### Step 1. Install depedencies 
 
     Install-Module -Name ThreadJob # Run from an elevated PowerShell
     
-### Try it out
+### Step 2. Try it out
 
    1. Quick'n'dirty test of your internet connection:
 
-       powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
+           powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
     
    2. Quick'n'dirty test of the connection to a specific host in your LAN:
     
-       powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
-       powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
+           powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
+           powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
 
 ## How to use
 
