@@ -5,13 +5,17 @@ Out-PingStats displays detailed terminal graphs about the short and long-term qu
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-This program is perfect if:
+This program is good if:
 
  * You want to evaluate a connection for more than a few dozen seconds.
  * You are evaluating a busy network.
 
- * When evaluating for more than a few dozen seconds, Out-PingStats will smartly aggregate measurements every 2minutes and can display nicely a few hours of data.
- * When evaluating a busy network, by e.g. pinging some well known host like google.com, 1.1.1.1 etc, you may see sporadic packet loss on an otherwise perfectly working lin. In many cases I have personaly seen these hosts droping pings and DNS query packets. I suspect that they are throtiling  packets when many devices behind the same public IP are hitting them hard with DNS queries or pings. Out-PingStats is immune to this phenomenon because it queries/pings more than a dozen different hosts and smartly aggregates the response times (RTT).
+When evaluating for minutes or hours, Out-PingStats will smartly aggregate measurements every 2 minutes so that it can display a few hours of data.
+
+When evaluating a busy network, by e.g. pinging some well known host like google.com, 1.1.1.1 etc, you may see sporadic packet loss on an otherwise perfectly working line. 
+I have seen these hosts droping pings and DNS query packets in many cases. 
+I guess that they are throtiling  packets when many devices behind the same public IP are hitting them hard with DNS queries or pings. 
+Out-PingStats is immune to such problems because it queries/pings more than a dozen different hosts in parallel and smartly aggregates the response times.
 
 If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
 
