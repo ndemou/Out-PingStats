@@ -1,23 +1,40 @@
 # Out-PingStats
 
-A PowerShell program to evaluate LAN or Internet quality. It displays plenty of text and pseudo graphical statistics about the short and long-term quality of your connection. By default it performs DNS queries to many free DNS servers and aggregates the response times (RTT) in a smart way. This is useful to test your Internet quality. If you want to test your ethernet/WIFI network quality you can specify a host that responds to pings. it will present the same quality metrics but this time for the ping RTTs.
+A PowerShell program to evaluate the quality of your connection to the Internet (default behaviour) or to another specific host. 
+Out-PingStats displays detailed terminal graphs about the short and long-term quality of your connection (response time, loss and jitter). 
+
+This program is perfect if:
+
+ * You want to evaluate a connection for more than a few dozen seconds (Out-PingStats aggregates measurements every 2minutes and can display nicely a few hours of data)
+ * You are evaluating a busy network (in which case pinging some well known host (like google.com, 1.1.1.1, etc) may result in sporadic packet loss. I have seen in many situations that although my uplink has no problem google.com, 1.1.1.1 and similar will drop pings and DNS query packets and I suspect that they are throtiling my packets when other devices in the network are hitting them with too many DNS queries or pings. 
+
+To evaluate your connection to the Internet it queries more than a dozen hosts (specificaly it performs DNS queries to many free DNS servers and also pings many different hosts). Then it aggregates the response times (RTT) from all this tens of hosts in a smart way and plots easy to understand graphs. 
+
+To evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you can specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case it will only ping the specified host (e.g. your default gateway).
 
 ## For the impatient
 
-To just test your internet connection:
+### Install depedencies 
 
-    powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
+    Install-Module -Name ThreadJob # Run from an elevated PowerShell
     
-To download and run with specific options for your case (e.g. to ping a host on your LAN):
+### Test:
+
+   1. Quick'n'dirty test of your internet connection:
+
+       powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
     
-    powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
-    powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 10.1.1.1"
+   2. Quick'n'dirty test of the connection to a specific host in your LAN:
+    
+       powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
+       powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
 
 ## How to use
+
     # To test Internet quality 
     Out-PingStats   
     
-    # To test WIFI/ethernet connection quality by pinging 10.1.1.1 (a host in your LAN)
+    # To test network connection to 10.1.1.1 by pinging at 4 pings per second:
     Out-PingStats -PingsPerSec 4 10.1.1.1 
 
 ## Example output 
