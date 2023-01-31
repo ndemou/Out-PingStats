@@ -1,16 +1,16 @@
 # Out-PingStats
 
-A PowerShell program to evaluate the quality of your connection to the Internet (default behaviour) or to another specific host. 
-Out-PingStats displays detailed terminal graphs about the short and long-term quality of your connection (response time, loss and jitter). 
+A PowerShell program to evaluate the quality of your connection to the Internet (default behaviour) or to a specific host. 
+Out-PingStats displays nice & detailed terminal graphs that help you assess the short and long-term quality of your connection. 
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
 This program is good if:
 
- * You want to evaluate a connection for more than a few dozen seconds.
+ * `ping` is not enough because you want to evaluate the quality of a network connection for more than a few dozen seconds.
  * You are evaluating a busy network.
 
-When evaluating for minutes or hours, Out-PingStats will smartly aggregate measurements every 2 minutes so that it can display a few hours of data.
+When evaluating for minutes or hours, Out-PingStats will smartly aggregate measurements every 2 minutes so that it can easily display a few hours of data in one screen.
 
 When evaluating a busy network, by e.g. pinging some well known host like google.com, 1.1.1.1 etc, you may see sporadic packet loss on an otherwise perfectly working line. 
 I have seen these hosts droping pings and DNS query packets in many cases. 
@@ -104,11 +104,13 @@ If you are seeing low-resolution graphs, you can download the free and very nice
 install them (by double clicking on the ttf file and clicking install) 
 and then configute your PowerShell terminal to use it.
 
-## Example: Histogram of a not so good wifi connection
+## Histogram examples
+
+### Histogram of a not so good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
 
-## Example: Histogram of a good wifi connection
+### Histogram of a good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652036-79f1b56c-1866-4508-b6af-0e8beddc1e5a.png)
 
@@ -116,8 +118,7 @@ and then configute your PowerShell terminal to use it.
     -PingsPerSec
 
 Pings per second to perform.
-
-In DNS query mode (the default if you don't specify a host) you can only select 1 (the default) or 2.
+In the default mode of operation (if you don't specify a host) you can only select 1 (the default) or 2.
 
 Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
 
@@ -140,24 +141,26 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 
 # Other details
 
-## Parallel pings/smart aggreagation
+## Parallel pings/smart aggregation
 
-When checking internet quality this script tries hard to be resilient to problems of specific DNS servers. To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second (it has 4 hosts to switch between). 
-This way it will not overload any one of them and thus it will not be blocked by anyone. 
-If at least two replies are received we consider it a success. For all the replies that we get in one batch/group we take into acount only the minimum RTT. 
-We also use a smart algorithm to "normalize" the RTTs of various servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
+To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
+It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds of you specify `-PingsPerSec 2`). 
+This way, it will not overload any one of them and thus it will not be throttled by anyone. 
+If at least two replies are received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
+We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
 
 ### About the algorithm for RTT Normalization 
 
-When we are getting RTTs from one and then another host with different RTTs
-it will appear as though there is jitter. To minimize the effect I had 
-this idea:
+When we are reading RTTs from one and then another host with different average times 
+it will appear as though there is jitter. To minimize this effect we use
+this method:
 
-  1) Keep the last 10 or 20 successfull RTTs from each host.
+  1) We keep the last 10 or 20 successfull RTTs from each host.
   2) Calculate the min of all these RTTs.
-  3) Calculate the average of all the minimums.
+  3) Calculate the *average of all minimums*.
   4) Adjust the real RTT values by moving them towards the 
-average of all the minimums by as many msec as their min is away from
+*average of all minimums* by as many msec as their min is away from
 the average min. 
 
 Example: 
@@ -169,7 +172,7 @@ Say that during the last 10 pings the min RTT of 3 hosts are like this:
       - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
       - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
 
-The value "Avg" above is the average of the three minimums (50 = (40+50+60)/3)
+(The value "Avg" above is the average of the three minimums -- 50 = (40+50+60)/3)
 
 Assuming that the minimums where the same before, then the Effective 
 RTTs will be calculated like this:
@@ -179,7 +182,7 @@ RTTs will be calculated like this:
      - host3 : 51 51 50 54 50 52 51 53 54 50 
        
 Note that since we adjust the real RTTs by an amount that depends 
-on a _slow_ changing average (the average of the minimum of the last _N_ RTTs) 
+on a *slow* changing average (the average of the minimum of the last *N* RTTs) 
 their variability is only slightly affected by the tiny amount of fluctuation 
 that the average is experiencing.
 Note also that MultiPings is reporting to main code just one RTT value
