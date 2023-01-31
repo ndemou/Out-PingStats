@@ -159,10 +159,10 @@ the average min.
 Example: 
 
 Say that during the last 10 pings the min RTT of 3 hosts are like this:
-               <----Last 10 RTTs----------->  Min Avg Avg-Min
-     - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
-     - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
-     - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
+                <----Last 10 RTTs----------->  Min Avg Avg-Min
+      - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
+      - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
+      - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
 
 The value "Avg" above is the average of the three minimums (50 = (40+50+60)/3)
 
