@@ -159,19 +159,19 @@ the average min.
 Example: 
 
 Say that during the last 10 pings the min RTT of 3 hosts are like this:
-              <----Last 10 RTTs----------->  Min Avg Avg-Min
-    - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
-    - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
-    - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
+               <----Last 10 RTTs----------->  Min Avg Avg-Min
+     - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
+     - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
+     - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
 
 The value "Avg" above is the average of the three minimums (50 = (40+50+60)/3)
 
 Assuming that the minimums where the same before, then the Effective 
 RTTs will be calculated like this:
 
-    - host1 : 50 52 60 55 51 50 52 60 55 51 
-    - host2 : 53 53 50 56 52 51 53 51 56 52 
-    - host3 : 51 51 50 54 50 52 51 53 54 50 
+     - host1 : 50 52 60 55 51 50 52 60 55 51 
+     - host2 : 53 53 50 56 52 51 53 51 56 52 
+     - host3 : 51 51 50 54 50 52 51 53 54 50 
        
 Note that since we adjust the real RTTs by an amount that depends 
 on a _slow_ changing average (the average of the minimum of the last _N_ RTTs) 
@@ -193,7 +193,7 @@ The script records every ping response to a text file named like:
 `google.com.2022-12-16_19.01.21.pingtimes.
 First line is 
 
-    pingrec-v1,2022-05-12,5 pings/sec,google.com
+     pingrec-v1,2022-05-12,5 pings/sec,google.com
 
 Then we have one line per minute starting with the timestamp `hhmm:`
 Finaly one char per ping follows. The char is `[char](ttl+32)`
