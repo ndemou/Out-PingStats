@@ -14,9 +14,7 @@ This program is good if:
 When evaluating for minutes or hours, Out-PingStats will aggregate measurements without losing important details so that it can easily display a few hours of data in one screen.
 
 When evaluating the Internet quality of a busy network you will typically ping some well known host like google.com, 1.1.1.1 etc. 
-However some times you may see sporadic packet loss on an otherwise perfectly working line. 
-I guess that all these hosts have to throttle incoming packets. Thus when many devices behind the same public IP are hitting them hard with DNS queries or pings they will drop some packets. 
-I have seen 3%, 5% and some times even more packet loss to well known hosts when at the same time I had zero loss to the ISP gateway and Internet servers that I own.
+However some times a specific host will throttle incoming packets which will appear as packet loss in your pings. This effect is stronger in LANs with many devices behind the same public IP where many devices maybe hammering a specific host. I have, in many cases, seen packet loss of 3% to 5% (and some times even more).
 Out-PingStats is immune to such problems because it queries/pings more than a dozen different hosts in parallel and smartly aggregates the response times.
 
 ## For the impatient
