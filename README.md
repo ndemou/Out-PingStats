@@ -7,17 +7,17 @@ Out-PingStats displays nice & detailed terminal graphs that help you assess the 
 
 This program is good if:
 
- * `ping` is not enough because you want to evaluate the quality of a network connection for more than a few dozen seconds.
- * You are evaluating a busy network.
+ * You want to glance at the screen and have a clear idea of what happens (instead of having to interpret streams of numbers from ping)
+ * You want to evaluate the quality of a connection for more than a few dozen seconds.
+ * You want to evaluate the Internet quality of a busy network with many devices.
 
-When evaluating for minutes or hours, Out-PingStats will smartly aggregate measurements every 2 minutes so that it can easily display a few hours of data in one screen.
+When evaluating for minutes or hours, Out-PingStats will aggregate measurements without losing important details so that it can easily display a few hours of data in one screen.
 
-When evaluating a busy network, by e.g. pinging some well known host like google.com, 1.1.1.1 etc, you may see sporadic packet loss on an otherwise perfectly working line. 
-I have seen these hosts droping pings and DNS query packets in many cases. 
-I guess that they are throtiling  packets when many devices behind the same public IP are hitting them hard with DNS queries or pings. 
+When evaluating the Internet quality of a busy network you will typically ping some well known host like google.com, 1.1.1.1 etc. 
+However some times you may see sporadic packet loss on an otherwise perfectly working line. 
+I guess that all these hosts have to throttle incoming packets. Thus when many devices behind the same public IP are hitting them hard with DNS queries or pings they will drop some packets. 
+I have seen 3%, 5% and some times even more packet loss to well known hosts when at the same time I had zero loss to the ISP gateway and Internet servers that I own.
 Out-PingStats is immune to such problems because it queries/pings more than a dozen different hosts in parallel and smartly aggregates the response times.
-
-If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
 
 ## For the impatient
 
@@ -43,6 +43,8 @@ If you want to evaluate your connection to a specific host (e.g. when you want t
     
     # To test network connection to 10.1.1.1 by pinging at 4 pings per second:
     Out-PingStats -PingsPerSec 4 10.1.1.1 
+
+If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
 
 ## Understanding the graphs
 
@@ -206,3 +208,8 @@ First line is
 Then we have one line per minute starting with the timestamp `hhmm:`
 Finaly one char per ping follows. The char is `[char](ttl+32)`
 (e.g. "A" for 33msec, "B" for 34msec...)
+
+## Note for non European users
+
+There's a list of IPs that are Europe centric in the code. Not all of them but many. 
+You may wish to change them to match your continent.
