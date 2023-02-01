@@ -69,8 +69,8 @@ In the x-axis you also get a tick every 10 periods (=20mins by default).
 
 **RTT BASELINE** displays the minimum RTT and **RTT VARIANCE** 
 displays the difference `p95 - min` for the period. 
-In simple words, almost all of your pings had an RTT between *BASELINE*
-and *BASELINE plus VARIANCE*. Read below for a more accurate 
+In simple words, none of the pings had an RTT less than *BASELINE*, and 95% of them had an RTT between *BASELINE*
+and *BASELINE plus VARIANCE*. Read below for a more detailed
 description of p95.
 
 **LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jittet. 
