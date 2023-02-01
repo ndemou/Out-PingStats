@@ -1,5 +1,5 @@
 <#
-    v0.10.7
+    v0.11
 
 TODO: Save files in %temp% by default
       and add argument to change folder
@@ -54,7 +54,9 @@ TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some part
     I don't always do it however. One case that this hurts is when deciding the max time
     to display on the histogram (without a user provided -GraphMax).
 
-TODO: After running for 8hrs this code increased its RAM usage by 30MB
+TODO: After running for 8hrs this code increased its RAM usage by 30MB (110->140MB) 3.75MB/hr
+      Then I added the $RespondersCnt_values queue and:
+      After running for 12hrs this code increased its RAM usage by 145MB (110->255MB) 12MB/hr
 
 TODO: I could probably add a heatmap with 2 periods per character.
     If one period is the default 2min then with 15chars I can cover 1 hour.
@@ -521,7 +523,7 @@ Function Start-SpecialPing {
     # NOTE that in case of failure, it does not return 0 but
     # the elapsed time 
     Param(
-        [string]$target="8.8.8.8",
+        [string]$target="",
         [int]$TimeOut = 0,
         [int]$Interval = 500
     )
@@ -1111,7 +1113,7 @@ function render_slow_updating_graphs() {
     render_bar_graph @($Jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null `
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
 }
-function render_all($last_input, $PingsPerSec) {
+function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
     if (($BarGraphSamples -eq -1) -or (!(Test-Path variable:script:EffBarsThatFit))) {
         $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
     }
@@ -1146,15 +1148,17 @@ function render_all($last_input, $PingsPerSec) {
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
     render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
 
-    # display the RespondersCnt bar graph
-    $graph_values =  @($RespondersCnt_values | select -last $script:EffBarsThatFit)
-    #echo ([string][char]9472*75)
-    $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>"
-    # decide Y axis limits
-    $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
-    ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-    $y_max = (y_axis_max $stats.min $stats.max 0 9)
-    render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 6 15
+    if ($ShowCountOfResponders) {
+        # display the RespondersCnt bar graph
+        $graph_values =  @($RespondersCnt_values | select -last $script:EffBarsThatFit)
+        #echo ([string][char]9472*75)
+        $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>"
+        # decide Y axis limits
+        $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
+        ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
+        $y_max = (y_axis_max $stats.min $stats.max 0 9)
+        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 6 15  $JITTER_BAR_GRAPH_THEME
+    }
 
     # display the histogram
     if ($RTT_values.count) {
@@ -1210,7 +1214,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             [string]$Property,
 
             [string]$Title = "",
-            [string]$Destination = "",
+            [string]$Target = "",
 
             [double]$GraphMax = -1,
             [double]$GraphMin = -1,
@@ -1307,7 +1311,11 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $last_input = $_
 
             if (!($Title)) {
-                $Title = $Title + $Destination
+                if ($Target -eq '') {
+                    $Title = $Title + "Internet hosts"
+                } else {
+                    $Title = $Title + $Target
+                }
             }
         }
 
@@ -1416,7 +1424,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             if (($GetDate - $ScrUpdPeriodStart).TotalSeconds -ge $UpdateScreenEvery) {
                 $ScrUpdPeriodStart = $GetDate
 
-                $screen = render_all $last_input
+                $screen = render_all $last_input $PingsPerSec ($target -eq '')
                 if ($DebugMode) {
                     $spacer = "~"
                 } else{
@@ -1468,7 +1476,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     [CmdletBinding()]
     param (
         [Parameter(Position=1)]
-        [string]$Target = "auto",
+        [string]$Target = "",
         [string]$Title = "",
         [double]$GraphMax = -1,
         [int]$PingsPerSec = 5,
@@ -1502,10 +1510,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         
         configure_graph_charset
 
-        
-        if ($target -ne 'auto') {
-            $jobs = @($null)
-            $jobs[0] = (
+        $jobs = @()
+        if ($target -ne '') {
+<#
+            # DNS query of specific target
+            $jobs += @((
                 start-job -ArgumentList $PingsPerSec, $target, $CodeOfDnsQuery -ScriptBlock {
                         $PingsPerSec = $args[0]
                         $target = $args[1]
@@ -1515,26 +1524,20 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                             -Interval (1000/$PingsPerSec) 
                             -Target $target
                     }
-            )
-
-            <#
-            $jobs = @($null)
-            $jobs[0] = (
-                start-job -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
-                        $PingsPerSec = $args[0]
-                        $target = $args[1]
-                        $CodeOfSpecialPing = $args[2]
-                        . Invoke-Expression $CodeOfSpecialPing
-                        Start-SpecialPing  
-                            -Interval (1000/$PingsPerSec) 
-                            -TimeOut ((1000/$PingsPerSec)*0.9) 
-                            -Target $target
-                    }
-            ) #>
+            ))
+#>
+            $jobs += @((
+                start-ThreadJob -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
+                    $PingsPerSec = $args[0]
+                    $target = $args[1]
+                    $CodeOfSpecialPing = $args[2]
+                    . Invoke-Expression $CodeOfSpecialPing
+                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec) -TimeOut ((1000/$PingsPerSec)*0.9)
+                }
+            ))
         } else {
 
             $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
-            $jobs = @()
             $DNS_TARGET_LIST | %{
                 $jobs += @((
                     Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiDnsQueries -ScriptBlock {
@@ -1561,28 +1564,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             }
         }
         
-        function Get-ChildProcesses($parent_pid) {
-            $children = (Get-WmiObject win32_process -filter "Name!='conhost.exe' AND ParentProcessId=$parent_pid" | select -property name, ProcessId)
-            if ($children) {
-                return ($children).ProcessId
-            }
-        }
-
-        echo "Finding children..."
-        # Every job we start starts a powershell.exe process 
-        # Each of them starts a conhost.exe
-        # These are the pids of all powershell.exe processes:       
-        $children_PS = (get-CimInstance win32_process -filter "Name='powershell.exe' AND ParentProcessId=$PID")
-        $children_PS_pids = @()
-        if ($children_PS) {$children_PS_pids += $children_PS.ProcessId}
-        echo "    $children_PS_pids"
-        # $children_PS_pids | %{ Show-Processes $_ } 
-        echo "Waiting for $($children_PS_pids.count) sec..."
-        echo "Finding grand children except conhost.exe if any..."
-        $grand_children = @()
-        $children_PS_pids | %{ $grand_children += (Get-ChildProcesses $_) }
-        echo "    $grand_children"
-        # $grand_children | %{ Show-Processes $_ } 
         
         # MAIN LOOP
         #--------------------------------------
@@ -1679,8 +1660,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             }
             }
             } | Format-PingTimes `
+                -Target $Target `
                 -PingsPerSec $PingsPerSec `
-                -Destination $Target `
                 -UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax `
                 -GraphMin $GraphMin -BucketsCount $BucketsCount `
                 -AggregationSeconds $AggregationSeconds -HistSamples $HistSamples `
@@ -1697,20 +1678,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             try {
                 $discarded_count = 0
                 foreach ($job in $jobs) {
-                    if ($job) {$discarded_count += [array]($job | receive-job)}
-                }
-                if ($discarded_count) {
-                    $discarded_count = $discarded_count.count
+                    if ($job) {$discarded_count += ([array]($job | receive-job) | measure).count}
                 }
             } catch {
                 Write-Host "Failed to retrieve output from background pings, $($error[0])"
             }
-            Write-Host  "Stoping background pings $($grand_children)..."
-            # $grand_children | stop-process -force
-            # write-host "taskkill.exe /F /PID $($grand_children -join ' /PID ')"
-            if ($grand_children) {
-                iex "taskkill.exe /T /F /PID $($grand_children -join ' /PID ')" > $null
-            } 
             Write-Host  "Removing jobs..."
             foreach ($job in $jobs) {Remove-Job $job -Force}
             write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings."
