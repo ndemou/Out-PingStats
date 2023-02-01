@@ -75,8 +75,9 @@ In simple words, none of the pings had an RTT less than *BASELINE*, and 95% of t
 and *BASELINE plus VARIANCE*. Read below for a more detailed
 description of p95.
 
-**LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jittet. 
-We just divide the two-way jitter by two assuming that any delays are symetrical.
+**LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jitter 
+(we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
+The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
 
 #### Regarding p95
 
@@ -86,15 +87,15 @@ of pings had an RTT<=50msec.
 Put another way only 5% of pings had RTTs worse than 50msec.
 We use the 95th percentile as a good aproximation of bad RTT times that
 we have to deal with **most** of the time. In other words we consider 
-these 5% of values that were worse than the `p95` as "outliers" that 
-we can safely ignore. This is usualy a good idea because
-it's common to have spourious extreme RTT times.
+these 5% of values that were larger than the `p95` as "outliers" that 
+we can safely ignore. 
 
 ## Regarding the terminal font
 
-If your terminal font contains unicode block characters (▁▂▃▄▅▆▇█)
+If your terminal font contains unicode block characters (like these: ▁▂▃▄▅▆▇█)
 then you can add the `-HighResFont $true` option to get
- preatier and more detailed graphs.
+ preatier and more detailed graphs. 
+Paste the above characters to your terminal to check.
 "Courier" and "Consolas" do not include them, "DejaVu sans mono" does.
 
 If you don't force high or low resolution by using the `-HighResFont $true/$false` option 
