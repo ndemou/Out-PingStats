@@ -25,8 +25,8 @@ My guess is that this happens because many devices are "hammering"
 I have, in many cases, seen packet loss of 3% to 5% 
 (and some times even more).
 Out-PingStats was designed to be immune to such problems. It pings 
-more than a dozen different hosts in parallel and also used a smart
- algorithm to combine the different response times to one value.
+more than a dozen different hosts in parallel and implements a smart
+ algorithm to combine the different response times in one meaningful value.
 If you see packet loss or the RTT jumping up then you know it's 
 because of a real problem in your uplink.
 
