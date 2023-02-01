@@ -1,25 +1,22 @@
-# Out-PingStats
+# What is it?
 
-A PowerShell program to evaluate the quality of your connection 
-to the Internet (default behaviour) or to a specific host. 
-Out-PingStats displays nice, detailed and easy to grasp terminal graphs 
+Out-PingStats displays nice, detailed and easy to understand graphs 
 that help you assess the short and long-term quality of your 
-connection with a quick glance at the screen. 
+uplink to the internet (or your connection to a specific host) 
+with a quick glance at the screen. Oh! and all that without 
+leaving your PowerShell terminal 🙂
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-This program is good if:
+# Why would you want to use it? 
 
- * You want to evaluate the quality of a connection for more than a few dozen seconds.
- * You want to evaluate the Internet quality of a large network with many devices.
- * You find graphs easier to interpret compared to a huge list of numbers.
+## You want to evaluate the quality of a connection for minutes or hours 
 
-When evaluating for long periods (minutes or hours), 
-Out-PingStats will aggregate measurements without losing important detail. 
-As a result it can easily display a few hours worth of data in one screen.
+Out-PingStats can easily and **nicely** display a few hours worth of data in one screen.
 
-When one wants to evaluate the uplink quality of a large network he will 
-typically ping some well known host (google.com, 1.1.1.1, etc). 
+## You want to evaluate the uplink quality of a large network
+
+In such cases one will typically ping some well known host (google.com, 1.1.1.1, etc). 
 Some times however that host will throttle incoming packets and 
 this will appear as packet loss in the pings. 
 This effect is stronger in LANs with many devices. 
@@ -32,6 +29,11 @@ more than a dozen different hosts in parallel and also used a smart
  algorithm to combine the different response times to one value.
 If you see packet loss or the RTT jumping up then you know it's 
 because of a real problem in your uplink.
+
+
+## You find graphs easier to interpret compared to a huge list of numbers
+
+Sorry robots, this is for humans :-)
 
 ## For the impatient
 
