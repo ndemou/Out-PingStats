@@ -45,11 +45,12 @@ Out-PingStats is immune to this problem.
 
 Sorry robots, this is for humans :-)
 
-## For the impatient
+## TLDR How to try it out
 
 ### Step 1. Install depedencies 
 
-    Install-Module -Name ThreadJob # Run from an elevated PowerShell
+    # Run this from an admin PowerShell
+    Install-Module -Name ThreadJob 
     
 ### Step 2. Try it out
 
@@ -61,6 +62,8 @@ Sorry robots, this is for humans :-)
     
            powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
            powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
+
+Your graphs will be nice but probably not "high quality". Read below about selecting a font that will display perfect graphs.
 
 ## How to use
 
