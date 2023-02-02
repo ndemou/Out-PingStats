@@ -38,9 +38,6 @@ Out-PingStats is immune to this problem.
   the host you ping.
 </details>
 
-
-
-
 ### You find graphs easier to interpret compared to a huge list of numbers
 
 Sorry robots, this is for humans :-)
@@ -132,9 +129,9 @@ the code will *try* to detect the font and decide whether to use the unicode blo
 It will display this warning if it thinks it can not.
 ![image](https://user-images.githubusercontent.com/4411400/208317605-721dafc4-06fb-4dd1-86ae-5c264fe08a0d.png)
 
-If you are seeing low-resolution graphs, you can download the free and very nice "DejaVu sans mono" fonts,
-install them (by double clicking on the ttf file and clicking install) 
-and then configute your PowerShell terminal to use it.
+If you are seeing low-resolution graphs, you can download the free and very nice "DejaVu sans mono" font,
+install it by double-clicking on the ttf file and clicking install, 
+and then configure your PowerShell terminal to use it.
 
 ## Histogram examples
 
@@ -150,7 +147,7 @@ and then configute your PowerShell terminal to use it.
     -PingsPerSec
 
 Pings per second to perform.
-In the default mode of operation (if you don't specify a host) you can only select 1 (the default) or 2.
+In the default mode of operation (if you don't specify a hostn with `-target`) you can only select 1 (the default) or 2.
 
 Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
 
@@ -178,7 +175,7 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
 To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
 It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds of you specify `-PingsPerSec 2`). 
-This way, it will not overload any one of them and thus it will not be throttled by anyone. 
+This way we minimize the chances of our pings getting throttled. 
 If at least two replies are received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
 We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
 
