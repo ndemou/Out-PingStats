@@ -222,7 +222,7 @@ parallel DNS queries we mostly suppress such sporadic spikes.
 ## Saved statistics
 
 The script records every ping response to a text file named like:
-`google.com.2022-12-16_19.01.21.pingtimes.
+`google.com.2022-12-16_19.01.21.pingtimes`.
 First line is 
 
      pingrec-v1,2022-05-12,5 pings/sec,google.com
