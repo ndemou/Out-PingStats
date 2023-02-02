@@ -81,8 +81,8 @@ Timeouts/lost packets will appear as a bar of red stars:
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
 The **RTT HISTOGRAM** includes the most recent few hundred pings.
-If you don't know what a histogram is [wikipedia is your friend](https://en.wikipedia.org/wiki/Histogram).
-You will need some experience with it to get a feeling of what is normal and what is not.
+If you don't know what a histogram is take a look at [wikipedia](https://en.wikipedia.org/wiki/Histogram), it's a very interesting way of representing a group of measurements.
+In any case you will need some experience with this graph to get a feeling of what is *normal* and what is not but I think it worths the small effort.
 Take a look at the examples below for a quick start.
 
 ### Slow updating graphs
@@ -90,15 +90,15 @@ Take a look at the examples below for a quick start.
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
 Each bar in them represents some **indicator of network quality** that is computed 
 for a fixed *period* of several seconds. 
-The *period* is 2mins by default and can be changed with `-AggregationSeconds`.
-In the x-axis you also get a tick every 10 periods (=20mins by default).
+The *period* is by default 2 minutes but can be changed with `-AggregationSeconds`.
+In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
-> **For all these indicators the lower the better**
+> **For all these graphs the lower the better**
 
 **RTT BASELINE** displays the minimum RTT and **RTT VARIANCE** 
 displays the difference `p95 - min` for the period. 
 In simple words, none of the pings had an RTT less than *BASELINE*, and 95% of them had an RTT between *BASELINE*
-and *BASELINE plus VARIANCE*. Read below for a more detailed
+and *BASELINE + VARIANCE*. Read below for a more detailed
 description of p95.
 
 **LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jitter 
