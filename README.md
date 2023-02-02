@@ -10,28 +10,38 @@ leaving your PowerShell terminal 🙂
 
 # Why would you want to use it? 
 
-## You want to evaluate the quality of a connection for minutes or hours 
+### You want to evaluate the quality of a connection for minutes or hours 
 
 Out-PingStats can easily and **nicely** display a few hours worth of data in one screen.
 
-## You want to evaluate the uplink quality of a large network
+### You want to evaluate the uplink quality of a large network
 
-In such cases one will typically ping some well known host (google.com, 1.1.1.1, etc). 
-Some times however that host will throttle incoming packets and 
-this will appear as packet loss in the pings. 
-This effect is stronger in LANs with many devices. 
-My guess is that this happens because many devices are "hammering"
- the host that I happened to choose. 
-I have, in many cases, seen packet loss of 3% to 5% 
-(and some times even more).
-Out-PingStats was designed to be immune to such problems. It pings 
-more than a dozen different hosts in parallel and implements a smart
- algorithm to combine the different response times in one meaningful value.
-If you see packet loss or the RTT jumping up then you know it's 
-because of a real problem in your uplink.
+In such cases one will typically `ping google.com`
+but some times google.com will throttle incoming packets and 
+this will appear as packet loss in your pings. 
+Out-PingStats is immune to this problem.
+<details>
+  <summary>More info</summary>
+  
+  Out-PingStats pings 
+  more than a dozen different hosts in parallel and implements a smart
+  algorithm to combine the different response times in one meaningful value.
+  If you see packet loss or the RTT jumping up then you know it's 
+  because of a real problem in your uplink and not because google.com
+  or whatever is throttling your pings.
+
+  This is not a minor issue: 
+  I have, in many cases, seen packet loss of 3% to 5% 
+  and some times even more.
+  My assumption is that in a LAN with many devices
+  there's greater chance that enough of them will happen to "hammer"
+  the host you ping.
+</details>
 
 
-## You find graphs easier to interpret compared to a huge list of numbers
+
+
+### You find graphs easier to interpret compared to a huge list of numbers
 
 Sorry robots, this is for humans :-)
 
