@@ -169,7 +169,7 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
 To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
-It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds of you specify `-PingsPerSec 2`). 
+It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
 This way we minimize the chances of our pings getting throttled. 
 If at least two replies are received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
 We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
