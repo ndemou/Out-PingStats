@@ -96,25 +96,20 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 > **For all these graphs the lower the better**
 
 **RTT BASELINE** displays the minimum RTT and **RTT VARIANCE** 
-displays the difference `p95 - min` for the period. 
-In simple words, none of the pings had an RTT less than *BASELINE*, and 95% of them had an RTT between *BASELINE*
-and *BASELINE + VARIANCE*. Read below for a more detailed
-description of p95.
+displays the difference `almost_max - min` for the period. 
+`Almost_max` is in fact is the 95th percentile (`p95`) of RTTs. 
+In simple words, none of the pings had an `RTT < BASELINE`, for 95% of them we had `BASELINE < RTT <
+BASELINE + VARIANCE` and for 5% of them we had `RTT > BASELINE + VARIANCE`. 
+
+We use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
+we have to deal with **most** of the time. 
+This proves to be very handy because spurious high RTTs are very common and may appear all over the place.
+E.g. you may have 199 pings below 20msec and one at 500msec or 900msec. 
+This outlier would completely ruin your plot and provides almost no information on the quality of the line.
 
 **LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jitter 
 (we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
-
-#### Regarding p95
-
-`p95` is the 95th percentile of RTTs. 
-For the many of us without a statistics degree, if `p95` equals 50msec then 95% 
-of pings had an RTT<=50msec. 
-Put another way only 5% of pings had RTTs worse than 50msec.
-We use the 95th percentile as a good aproximation of bad RTT times that
-we have to deal with **most** of the time. In other words we consider 
-these 5% of values that were larger than the `p95` as "outliers" that 
-we can safely ignore. 
 
 ## Regarding the terminal font
 
