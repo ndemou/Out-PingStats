@@ -1,15 +1,13 @@
 <#
-    v0.11
+    v0.12
 
-TODO: Save files in %temp% by default
-      and add argument to change folder
-TODO: Print clock time every 10vertical bars('22:26) instead of just "`"
+TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
       (instead of showing the drops as they happen in stderr like I do)
       (maybe show them next to the histogram)
-TODO: Keep more (e.g. 100) slow data graphs that fit the screen and show them
-      if the window is enlargeds
-TODO: Maybe don't write stats to ps1, just print screen to .txt
+TODO: In Histogram show the actual values instead of min... and ...MAX
+TODO: Print clock time every 10 or 20 vertical bars
+      i.e. '22:26 instead of just ` (yes ' is better than `)
 TODO: Maybe when multiple scripts run simultaneously sync Y-max for all graphs
 TODO: Option to read input from saved file 
 TODO: Hide histogram if console height is not enough
@@ -53,10 +51,6 @@ TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some part
     ... $RTT_values | ?{$_ -ne 9999} |...
     I don't always do it however. One case that this hurts is when deciding the max time
     to display on the histogram (without a user provided -GraphMax).
-
-TODO: After running for 8hrs this code increased its RAM usage by 30MB (110->140MB) 3.75MB/hr
-      Then I added the $RespondersCnt_values queue and:
-      After running for 12hrs this code increased its RAM usage by 145MB (110->255MB) 12MB/hr
 
 TODO: I could probably add a heatmap with 2 periods per character.
     If one period is the default 2min then with 15chars I can cover 1 hour.
@@ -1157,7 +1151,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
         $y_max = (y_axis_max $stats.min $stats.max 0 9)
-        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 6 15  $JITTER_BAR_GRAPH_THEME
+        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 3 18  $JITTER_BAR_GRAPH_THEME
     }
 
     # display the histogram
@@ -1171,9 +1165,12 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
 
     if ($Variance_values.count) {
         render_slow_updating_graphs
-        if (Test-Path variable:script:LOG_FILE) {
-            echo "$COL_IMP_LOW     (Saving to $($script:LOG_FILE))"
+        if (Test-Path variable:script:SCREEN_DUMP_FILE) {
+            $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
+            echo "$COL_IMP_LOW     (Saving to $filename)"
         }
+        $error = $null # empty $error which collects errors from pings and DNS queries
+        [gc]::Collect() # force garbage collection
     }
 
     if ($DebugMode) {
@@ -1182,6 +1179,22 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         echo "Jitter_values=$Jitter_values"
         #sleep 0.1
     }
+}
+function append_to_pingtimes($ToSave_values, $file) {
+    # Record EVERY ping response to a text file named like:
+    # google.com.2022-12-16_19.01.21.pingtimes
+    # First line is
+    #     pingrec-v1,2022-05-12,5 pings/sec,google.com
+    # Then we have one line per minute starting with the timestamp "hhmm:"
+    # Finaly one char per ping follows. The char is [char](ttl+32)
+    # (e.g. "A" for 33msec, "B" for 34msec...)
+
+    $line = (get-date -format 'HHmm:')
+    $ToSave_values | %{
+        $line += [char]($_ + 32)
+    }
+    $line >> $file
+    $ToSave_values = @()
 }
 function Format-PingTimes {
 <#
@@ -1276,35 +1289,33 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 $all_lost_cnt  += 1
             }
 
-            if ($ms) {
-                # $RTT_values is used both to show the bar graph and for the histogram
-                # We need $HistSamples samples for the histogram and EffBarsThatFit
-                # for the bar graph. I add another 100 so that if the user enlarges the
-                # screen the graph will imidiately show more values.
-                $max_values_to_keep = [math]::max($script:EffBarsThatFit + 100, $HistSamples)
+            # $RTT_values is used both to show the bar graph and for the histogram
+            # We need $HistSamples samples for the histogram and EffBarsThatFit
+            # for the bar graph. I add another 100 so that if the user enlarges the
+            # screen the graph will imidiately show more values.
+            $max_values_to_keep = [math]::max($script:EffBarsThatFit + 100, $HistSamples)
 
-                # populate $RTT_values
-                #-----------------------------
+            # populate $RTT_values
+            #-----------------------------
+            $RTT_values.enqueue($ms)
+            $RespondersCnt_values.enqueue($_.bucket_ok_pings)
+            # ignore the first 10 pings (the sometimes bumpy start)
+            if (($RTT_values.count -eq 11) -and !$bumpy_start_cleanup_done) {
+                $bumpy_start_cleanup_done = $true
+                $RTT_values.clear()
                 $RTT_values.enqueue($ms)
+                $all_pings_cnt = 1
+                $all_lost_cnt  += [math]::min($all_lost_cnt,1)
+                
+                $RespondersCnt_values.clear()
                 $RespondersCnt_values.enqueue($_.bucket_ok_pings)
-                # ignore the first 10 pings (the sometimes bumpy start)
-                if (($RTT_values.count -eq 11) -and !$bumpy_start_cleanup_done) {
-                    $bumpy_start_cleanup_done = $true
-                    $RTT_values.clear()
-                    $RTT_values.enqueue($ms)
-                    $all_pings_cnt = 1
-                    $all_lost_cnt  += [math]::min($all_lost_cnt,1)
-                    
-                    $RespondersCnt_values.clear()
-                    $RespondersCnt_values.enqueue($_.bucket_ok_pings)
-                }
+            }
 
-                $ToSave_values += @($ms)
-                # keep at most $script:EffBarsThatFit measurements in RTT_values
-                while ($RTT_values.count -gt $max_values_to_keep) {
-                    $foo = $RTT_values.dequeue()
-                    $foo = $RespondersCnt_values.dequeue()
-                }
+            $ToSave_values += @($ms)
+            # keep at most $script:EffBarsThatFit measurements in RTT_values
+            while ($RTT_values.count -gt $max_values_to_keep) {
+                $foo = $RTT_values.dequeue()
+                $foo = $RespondersCnt_values.dequeue()
             }
 
             # other things to do with input
@@ -1329,7 +1340,11 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         } else {
             $script:AggPeriodSeconds = ($(get-date) - $AggPeriodStart).TotalSeconds
         }
+        
+        $save_screen_to_file = $false # a flat that is set once pper AggPeriodSeconds
+        
         if (($script:AggPeriodSeconds -ge $AggregationSeconds) -and ($RTT_values.count -gt 2)) {
+            # This code executes once every AggPeriodSeconds
             $AggPeriodStart = (get-date)
             if (!($DebugMode)) {$script:full_redraw = $true}
 
@@ -1358,63 +1373,17 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $Loss_values.enqueue($lostperc)
 
             # keep at most $script:EffBarsThatFit (same as for the time graph
-            while ($Variance_values.count -gt $script:EffBarsThatFit) {
+            while ($Variance_values.count -gt ($script:EffBarsThatFit+100)) {
                 $foo = $Variance_values.dequeue()
                 $foo = $Baseline_values.dequeue()
                 $foo = $Jitter_values.dequeue()
                 $foo = $Loss_values.dequeue()
             }
 
-            # we also save the slow updating graph values to disk
-            #------------------------------------------
-            $file =  $script:LOG_FILE
-            echo "# You can run the following commands to get a nice graph" > "$file.tmp"
-            echo "# $(get-date -format 'yyyy-MM-dd HH:mm:ss') $Title" >> "$file.tmp"
-            echo "echo ''" >> "$file.tmp"
-            echo "`$SamplingStart = (get-date)" >> "$file.tmp"
-            echo "`$PingsPerSec=$PingsPerSec" >> "$file.tmp"
-            echo "`$HistSamples=$HistSamples" >> "$file.tmp"
-            echo "`$all_min_RTT=$all_min_RTT" >> "$file.tmp"
-            echo "`$all_max_RTT=$all_max_RTT" >> "$file.tmp"
-            echo "`$all_pings_cnt=$all_pings_cnt" >> "$file.tmp"
-            echo "`$all_lost_cnt=$all_lost_cnt" >> "$file.tmp"
-            $escaped = $Title -replace "'","``'"
-            echo "`$Title='$($escaped)'" >> "$file.tmp"
-
-            $list = (($RTT_values | %{ aprox_num $_}) -join ",")
-            echo "`$RTT_values=@($list)" >> "$file.tmp"
-            $list = (($Variance_values | %{ aprox_num $_}) -join ",")
-            echo "`$Variance_values=@($list)" >> "$file.tmp"
-            $list = (($Baseline_values | %{ aprox_num $_}) -join ",")
-            echo "`$Baseline_values=@($list)" >> "$file.tmp"
-            $list = (($Jitter_values | %{ aprox_num $_})  -join ",")
-            echo "`$Jitter_values=@($list)" >> "$file.tmp"
-            $list = (($Loss_values  | %{ aprox_num $_}) -join ",")
-            echo "`$Loss_values=@($list)" >> "$file.tmp"
-            echo "`$AggregationSeconds=$AggregationSeconds" >> "$file.tmp"
-            echo "`$HistSamples=$HistSamples" >> "$file.tmp"
-            echo "`$GraphMin=$GraphMin" >> "$file.tmp"
-            echo "`$GraphMax=$GraphMax" >> "$file.tmp"
-            echo "render_all" >> "$file.tmp"
-
-            if (test-path "$file") {remove-item "$file"}
-            move-item "$file.tmp" "$file"
+            append_to_pingtimes $ToSave_values $script:RTT_FILE
             
-            # Record EVERY ping response to a text file named like:
-            # google.com.2022-12-16_19.01.21.pingtimes
-            # First line is
-            #     pingrec-v1,2022-05-12,5 pings/sec,google.com
-            # Then we have one line per minute starting with the timestamp "hhmm:"
-            # Finaly one char per ping follows. The char is [char](ttl+32)
-            # (e.g. "A" for 33msec, "B" for 34msec...)
-
-            $line = (get-date -format 'HHmm:')
-            $ToSave_values | %{
-                $line += [char]($_ + 32)
-            }
-            $line >> $RTT_FILE
-            $ToSave_values = @()
-
+            # signal that it is time to update the file with the current screen
+            $save_screen_to_file = $true
         }
 
         if ($RTT_values.count -eq 0) {
@@ -1444,6 +1413,13 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                     write-host ""
                 }
                 [Console]::CursorVisible = $true
+                
+                if ($save_screen_to_file) {
+                    # save current screen to SCREEN_DUMP_FILE
+                    #------------------------------------------
+                    $screen > $script:SCREEN_DUMP_FILE
+                }
+
             }
         }
     }
@@ -1495,10 +1471,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
     $script:HighResFont = $HighResFont 
     try {
-        $ts = (get-date -format 'yyyy-MM-dd_HH.mm')
-        $script:LOG_FILE="pingtimes.$ts.ps1"
-        $script:RTT_FILE="$ts.pingrec"
-        "pingrec-v1,$ts,$PingsPerSec pings/sec" > $RTT_FILE
+        $ts = (get-date -format 'yyyy-MM-dd_HH.mm.ss')
+        $script:SCREEN_DUMP_FILE = "$($env:TEMP)\ops.$ts.screen"
+        $script:RTT_FILE = "$($env:TEMP)\ops.$ts.pingrec"
+        "pingrec-v1,$ts,$PingsPerSec pings/sec" > $script:RTT_FILE
         if (!($Title)) {
             $Title = "$Target"
         }
@@ -1577,16 +1553,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             # Test-Connection $Destination -ping -Continuous
             $data = @()
             while (!($data)) {
-                $ts1 = ((Get-Date).ticks/10000)
-                
-                # tidy up RAM then wait for a total of 2sec 
-                # _including_ the time for tiding up of RAM
-                $error = $null
-                [gc]::Collect() # force garbage collection
-
-                # that's the waiting part
-                $ts2 = ((Get-Date).ticks/10000)
-                sleep -milliseconds (2000-($ts2-$ts1)) # with 0.5 or less it overwhelms one CPU core...(???)
+                sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
 
                 foreach ($job in $jobs) {
                     if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
@@ -1693,6 +1660,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 if (!(Get-Module ThreadJob -list)) {
     echo "Please install ThreadJob module by issuing this command with admin priviledges:`nInstall-Module -Name ThreadJob"
 } else {
+    # $args_json = (($args | ConvertTo-Json ) -replace '\r\n',' ')
     Out-PingStats @args
 }
-Out-PingStats @args
