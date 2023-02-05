@@ -128,6 +128,23 @@ If you are seeing low-resolution graphs, you can download the free and very nice
 install it by double-clicking on the ttf file and clicking install, 
 and then configure your PowerShell terminal to use it.
 
+## Other features
+
+### Periodic screen dump to a file
+
+Every time Out-PingStats updates the slow graphs, it dumps the screen to a file
+named  "ops.<START-TIME>.screen" inside your %TEMP%
+folder.  So if after closing the program you want to view its last output
+you only have to `cat` this file.
+
+### Saved RTT measurements
+
+Out-PingStats also records every RTT time measured to a text file named 
+`ops.<START-TIME>.pingrec` in your %TEMP% folder. The file has one line per 
+minute starting with the timestamp `hhmm:`. After the timestamp follows one
+character per measurement. The character is `[char](ttl+32)` 
+(e.g. "A" for 33msec, "B" for 34msec, etc)
+
 ## Histogram examples
 
 ### Histogram of a not so good wifi connection
@@ -218,18 +235,6 @@ server. This will register as two strong jitter measurements but it's more
 plausible that this slow reply is due to the DNS application rather than due 
 to the network (DNS is not as simple as ping). By keeping just the min(RTT) of all
 parallel DNS queries we mostly suppress such sporadic spikes. 
-
-## Saved statistics
-
-The script records every ping response to a text file named like:
-`google.com.2022-12-16_19.01.21.pingtimes`.
-First line is 
-
-     pingrec-v1,2022-05-12,5 pings/sec,google.com
-
-Then we have one line per minute starting with the timestamp `hhmm:`
-Finaly one char per ping follows. The char is `[char](ttl+32)`
-(e.g. "A" for 33msec, "B" for 34msec...)
 
 ## Note for non European users
 
