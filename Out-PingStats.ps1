@@ -1,5 +1,5 @@
 <#
-    v0.12
+    v0.13
 
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
@@ -1182,16 +1182,15 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
 }
 function append_to_pingtimes($ToSave_values, $file) {
     # Record EVERY ping response to a text file named like:
-    # google.com.2022-12-16_19.01.21.pingtimes
     # First line is
     #     pingrec-v1,2022-05-12,5 pings/sec,google.com
     # Then we have one line per minute starting with the timestamp "hhmm:"
-    # Finaly one char per ping follows. The char is [char](ttl+32)
+    # Finaly one char per ping follows. The char is [char](ttl+34)
     # (e.g. "A" for 33msec, "B" for 34msec...)
 
     $line = (get-date -format 'HHmm:')
     $ToSave_values | %{
-        $line += [char]($_ + 32)
+        $line += [char]($_ + 34)
     }
     $line >> $file
     $ToSave_values = @()
@@ -1311,7 +1310,9 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 $RespondersCnt_values.enqueue($_.bucket_ok_pings)
             }
 
-            $ToSave_values += @($ms)
+            # keep $ms to a list of values that we will right to the ops....pingrec file
+            if ($ms -eq 9999) {$ToSave_values += @(-1)} else {$ToSave_values += @($ms)}
+            
             # keep at most $script:EffBarsThatFit measurements in RTT_values
             while ($RTT_values.count -gt $max_values_to_keep) {
                 $foo = $RTT_values.dequeue()
@@ -1380,7 +1381,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 $foo = $Loss_values.dequeue()
             }
 
-            append_to_pingtimes $ToSave_values $script:RTT_FILE
+            append_to_pingtimes $ToSave_values $script:PINGREC_FILE
             
             # signal that it is time to update the file with the current screen
             $save_screen_to_file = $true
@@ -1473,8 +1474,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     try {
         $ts = (get-date -format 'yyyy-MM-dd_HH.mm.ss')
         $script:SCREEN_DUMP_FILE = "$($env:TEMP)\ops.$ts.screen"
-        $script:RTT_FILE = "$($env:TEMP)\ops.$ts.pingrec"
-        "pingrec-v1,$ts,$PingsPerSec pings/sec" > $script:RTT_FILE
+        $script:PINGREC_FILE = "$($env:TEMP)\ops.$ts.pingrec"
+        "pingrec-v1,$ts,$PingsPerSec pings/sec" > $script:PINGREC_FILE
         if (!($Title)) {
             $Title = "$Target"
         }
