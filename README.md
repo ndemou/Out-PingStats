@@ -133,7 +133,7 @@ and then configure your PowerShell terminal to use it.
 ### Periodic screen dump to a file
 
 Every time Out-PingStats updates the slow graphs, it dumps the screen to a file
-named  "ops.<START-TIME>.screen" inside your %TEMP%
+named  `ops.<START-TIME>.screen` inside your %TEMP%
 folder.  So if after closing the program you want to view its last output
 you only have to `cat` this file.
 
@@ -142,8 +142,8 @@ you only have to `cat` this file.
 Out-PingStats also records every RTT time measured to a text file named 
 `ops.<START-TIME>.pingrec` in your %TEMP% folder. The file has one line per 
 minute starting with the timestamp `hhmm:`. After the timestamp follows one
-character per measurement. The character is `[char](ttl+32)` 
-(e.g. "A" for 33msec, "B" for 34msec, etc)
+character per measurement. The character is `[char]($RTT+34)` 
+(e.g. `A` for 31msec, `B` for 32msec, etc)
 
 ## Histogram examples
 
