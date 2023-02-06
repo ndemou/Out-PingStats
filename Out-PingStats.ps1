@@ -1,5 +1,5 @@
 <#
-    v0.13
+    v0.15
 
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
@@ -191,7 +191,7 @@ $JITTER_BAR_GRAPH_THEME=@{base=$col_base ;
 #----------------------------------------------------------------
 
 $BarGraphSamples = $Host.UI.RawUI.WindowSize.Width - 6
-$BucketsCount=10
+$HistBucketsCount=10
 $DebugMode=0
 $script:AggPeriodSeconds = 0
 $script:status = ""
@@ -377,7 +377,7 @@ Function Start-MultiDnsQueries {
             Status = $status.tostring(); `
             RTT = $effective_RTT; `
             target = $target; `
-            # ping_count = $ping_count; `
+            ping_count = $ping_count; `
             dt = $RTT - $effective_RTT; `
             min_of_last_RTTs = $min_of_last_RTTs[$target]; `
             # avg_of_mins = $avg_of_mins; `
@@ -459,7 +459,16 @@ Function Start-MultiPings {
         }
         $sent_at = (Get-Date)
         $Ping = [System.Net.NetworkInformation.Ping]::New()
-        $ret = $Ping.Send($target, $TimeOut)
+		try {
+			$ret = $Ping.Send($target, $TimeOut) 
+		} catch {
+			$ret =[PSCustomObject]@{`
+				Status = $Error[0].Exception.GetType().FullName; `
+				RTT = 0; `
+				target = $target `
+			}
+		}
+
         $ts_end = (Get-Date)
         $ping_count += 1
         if ($ret.Status -ne 'Success') {
@@ -487,7 +496,7 @@ Function Start-MultiPings {
             Status = $ret.Status.tostring(); `
             RTT = $effective_RTT; `
             target = $target; `
-            # ping_count = $ping_count; `
+            ping_count = $ping_count; `
             # RealRTT = $real_RTT; `
             # avg_of_mins = $avg_of_mins; `
             debug = $debug_msg
@@ -529,7 +538,15 @@ Function Start-SpecialPing {
         $sent_at = (Get-Date)
         # $sent_at.ticks / 10000 milliseconds counter
         $Ping = [System.Net.NetworkInformation.Ping]::New()
-        $ret = $Ping.Send($target, $TimeOut)
+		try {
+			$ret = $Ping.Send($target, $TimeOut)
+		} catch {
+			$ret =[PSCustomObject]@{`
+				Status = $Error[0].Exception.GetType().FullName; `
+				RTT = 0; `
+				target = $target `
+			}
+		}
         $ts_end = (Get-Date)
         $ping_count += 1
         if ($ret.Status -ne 'Success') {
@@ -830,8 +847,8 @@ function percent_to_bar($percent, $Chars_for_100perc) {
 }
 function series_to_histogram($y_values) {
     # returns an array with the values of the histogram
-    $buckets = @(0..$BucketsCount)
-    For ($i=0; $i -le $BucketsCount; $i++) { $buckets[$i] = 0 }
+    $buckets = @(0..$HistBucketsCount)
+    For ($i=0; $i -le $HistBucketsCount; $i++) { $buckets[$i] = 0 }
 
     $stats = (stats_of_series $y_values)
 
@@ -845,17 +862,17 @@ function series_to_histogram($y_values) {
     } else {
         $y_max = $GraphMax
     }
-    if ($y_max -lt ($y_min + $BucketsCount)) {$y_max = $y_min + $BucketsCount}
+    if ($y_max -lt ($y_min + $HistBucketsCount)) {$y_max = $y_min + $HistBucketsCount}
 
     $y_values | %{
         $ms = $_
         if ($ms -eq 9999) {
-            $buckets[$BucketsCount] += 1  # $buckets[$BucketsCount] counts failures
+            $buckets[$HistBucketsCount] += 1  # $buckets[$HistBucketsCount] counts failures
         } else {
             # line about a reply
             $norm_ms = [math]::min($y_max-1,[math]::max($y_min,$ms))
             [double]$bucket = ($norm_ms-$y_min)/($y_max-$y_min)
-            [double]$bucket = [Math]::Floor($bucket*$BucketsCount)
+            [double]$bucket = [Math]::Floor($bucket*$HistBucketsCount)
             #echo "$ms => +1 in bucket #$bucket"
             $buckets[$bucket] += 1
         }
@@ -865,13 +882,13 @@ function series_to_histogram($y_values) {
 function render_histogram($y_values) {
     ($buckets, $y_min, $y_max) = (series_to_histogram $y_values)
     # the following fancy line makes sure I buckets divided exactly at integer values
-    $y_max = [math]::Ceiling(($y_max - $y_min) / $BucketsCount) * $BucketsCount + $y_min
+    $y_max = [math]::Ceiling(($y_max - $y_min) / $HistBucketsCount) * $HistBucketsCount + $y_min
 
     #echo "HIST min=$y_min, max=$y_max "
 
     [double]$perc_cumul = 0
     [double]$max_perc = 0
-    For ($i=0; $i -le $BucketsCount; $i++) {
+    For ($i=0; $i -le $HistBucketsCount; $i++) {
         [double]$percent = [Math]::Round(100 * $buckets[$i] / $y_values.count,1)
         $max_perc = [Math]::max($max_perc, $percent)
     }
@@ -879,23 +896,23 @@ function render_histogram($y_values) {
     # 28 characters are available
     # if max percent is 0.5 then by setting scale to 28/0.5=56 chars the 50% will fill 28 chars
     $Chars_for_100perc = 28/($max_perc/100)
-    For ($i=0; $i -lt $BucketsCount; $i++) {
-        [double]$from = $y_min + $i * ($y_max-$y_min)/$BucketsCount
-        [double]$to = $y_min + ($i+1) * ($y_max-$y_min)/$BucketsCount
+    For ($i=0; $i -lt $HistBucketsCount; $i++) {
+        [double]$from = $y_min + $i * ($y_max-$y_min)/$HistBucketsCount
+        [double]$to = $y_min + ($i+1) * ($y_max-$y_min)/$HistBucketsCount
         $count = $buckets[$i]
         [double]$percent = [Math]::Round(100 * $buckets[$i] / $y_values.count,1)
         $perc_cumul = [Math]::min(100, [Math]::Round($perc_cumul + $percent,1))
         $max_perc = [Math]::max($max_perc, $percent)
 
         if ($i -eq 0) {$from_str="min"; $cumul_str=" Cumul"} else {$from_str="{0,3}" -f $from; $cumul_str=" {0,3}% " -f $perc_cumul}
-        if ($i -eq ($BucketsCount - 1)) {$to_str="MAX"} else {$to_str="{0,3}" -f $to}
+        if ($i -eq ($HistBucketsCount - 1)) {$to_str="MAX"} else {$to_str="{0,3}" -f $to}
         $bars = (percent_to_bar $percent  $Chars_for_100perc)
         $spaces = 28-($bars.length)
         $spaces = " " * [math]::max(0,$spaces)
         $bars = "{0}{1}" -f $bars, $spaces
         "{0}...{1} $COL_IMP_LOW{2,4}$COL_RST {3,4}%$COL_IMP_LOW{4,5}$COL_GRAPH{5}$COL_RST" -f $from_str, $to_str, $count, $percent, $cumul_str, $bars
     }
-    $failed_perc = $buckets[$BucketsCount] # failures
+    $failed_perc = $buckets[$HistBucketsCount] # failures
     [double]$percent = [Math]::Round(100 * $failed_perc / ($y_values.count),1)
 
     if ($percent -gt 0) {$color = $col_hilite} else {$color = $COL_H1}
@@ -1151,7 +1168,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
         $y_max = (y_axis_max $stats.min $stats.max 0 9)
-        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 3 18  $JITTER_BAR_GRAPH_THEME
+        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 18  $JITTER_BAR_GRAPH_THEME
     }
 
     # display the histogram
@@ -1187,6 +1204,8 @@ function append_to_pingtimes($ToSave_values, $file) {
     # Then we have one line per minute starting with the timestamp "hhmm:"
     # Finaly one char per ping follows. The char is [char](ttl+34)
     # (e.g. "A" for 33msec, "B" for 34msec...)
+    # Notably the time out is comming as a -1 value (not a 9999 value
+    # like in the rest of the code) and thus it is recorded as a "!"
 
     $line = (get-date -format 'HHmm:')
     $ToSave_values | %{
@@ -1231,7 +1250,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             [double]$GraphMax = -1,
             [double]$GraphMin = -1,
             [double]$UpdateScreenEvery = 1,
-            [int]$BucketsCount=10,
+            [int]$HistBucketsCount=10,
             [int]$AggregationSeconds=120, # 2 mins
             [int]$HistSamples=100,
             [char]$Visual = '=',
@@ -1272,6 +1291,10 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
     }
     process {
         $Items  | %{
+			# echo "Item: $($_.GetType().Name) $($_.status) $($_.RTT) $($_.status) $($_.bucket_ok_pings)"
+			# echo $_
+			# echo ""
+
             #echo $_, ($_.Status -eq 'Success')
             if ($_.Status -eq 'Success') {
                 [int]$ms = $_.RTT
@@ -1343,7 +1366,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         }
         
         $save_screen_to_file = $false # a flat that is set once pper AggPeriodSeconds
-        
+
         if (($script:AggPeriodSeconds -ge $AggregationSeconds) -and ($RTT_values.count -gt 2)) {
             # This code executes once every AggPeriodSeconds
             $AggPeriodStart = (get-date)
@@ -1387,14 +1410,24 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $save_screen_to_file = $true
         }
 
-        if ($RTT_values.count -eq 0) {
+
+
+        if ($RTT_values.count -lt 0) {
             echo "No reply yet. Last record: $last_input"
-        } else {
+        } else { 
             $GetDate = $(get-date)
             if (($GetDate - $ScrUpdPeriodStart).TotalSeconds -ge $UpdateScreenEvery) {
+
                 $ScrUpdPeriodStart = $GetDate
 
-                $screen = render_all $last_input $PingsPerSec ($target -eq '')
+				# This try/catch is an ugly hack because when pinging a host 
+				# with no network (e.g. cable unpluged), render_all raises
+				# "Cannot index into a null array."
+				try {
+					$screen = render_all $last_input $PingsPerSec ($target -eq '')
+				} catch {
+					$screen = "Render_all error: $($error[0])`n$last_input"
+				}
                 if ($DebugMode) {
                     $spacer = "~"
                 } else{
@@ -1406,6 +1439,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                     $script:full_redraw = $false
                     $old_window_width = $Host.UI.RawUI.WindowSize.Width
                 }
+
                 [Console]::CursorVisible = $false
                 $screen | %{
                     write-host -nonewline "$_"
@@ -1420,8 +1454,8 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                     #------------------------------------------
                     $screen > $script:SCREEN_DUMP_FILE
                 }
-
-            }
+#>
+			}
         }
     }
     end {
@@ -1458,7 +1492,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         [double]$GraphMax = -1,
         [int]$PingsPerSec = 5,
         [double]$GraphMin = -1,
-        [int]$BucketsCount=10,
+        [int]$HistBucketsCount=10,
         [int]$AggregationSeconds=120, # 2 mins
         [int]$HistSamples=-1,
         [char]$Visual = '=',
@@ -1486,34 +1520,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         }
         
         configure_graph_charset
+		
+		$parallel_testing = ($target -eq '')
 
         $jobs = @()
-        if ($target -ne '') {
-<#
-            # DNS query of specific target
-            $jobs += @((
-                start-job -ArgumentList $PingsPerSec, $target, $CodeOfDnsQuery -ScriptBlock {
-                        $PingsPerSec = $args[0]
-                        $target = $args[1]
-                        $CodeOfDnsQuery = $args[2]
-                        . Invoke-Expression $CodeOfDnsQuery
-                        Start-DNSQuery
-                            -Interval (1000/$PingsPerSec) 
-                            -Target $target
-                    }
-            ))
-#>
-            $jobs += @((
-                start-ThreadJob -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
-                    $PingsPerSec = $args[0]
-                    $target = $args[1]
-                    $CodeOfSpecialPing = $args[2]
-                    . Invoke-Expression $CodeOfSpecialPing
-                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec) -TimeOut ((1000/$PingsPerSec)*0.9)
-                }
-            ))
-        } else {
-
+        if ($parallel_testing) {
             $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
             $DNS_TARGET_LIST | %{
                 $jobs += @((
@@ -1539,6 +1550,32 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     }
                 ))
             }
+        } else {
+<#
+			# DNS query of specific target
+            # (Instead of the default ping specific target mode)
+			#----------------------------------
+            $jobs += @((
+                start-job -ArgumentList $PingsPerSec, $target, $CodeOfDnsQuery -ScriptBlock {
+                        $PingsPerSec = $args[0]
+                        $target = $args[1]
+                        $CodeOfDnsQuery = $args[2]
+                        . Invoke-Expression $CodeOfDnsQuery
+                        Start-DNSQuery
+                            -Interval (1000/$PingsPerSec) 
+                            -Target $target
+                    }
+            ))
+#>
+            $jobs += @((
+                start-ThreadJob -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
+                    $PingsPerSec = $args[0]
+                    $target = $args[1]
+                    $CodeOfSpecialPing = $args[2]
+                    . Invoke-Expression $CodeOfSpecialPing
+                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec) -TimeOut ((1000/$PingsPerSec)*0.9)
+                }
+            ))
         }
         
         
@@ -1549,92 +1586,132 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         $ping_count = 0
         $bucket = @()
         $bucket_time = (get-date)
+		$last_success_at = $bucket_time
         write-verbose "Init bucket_time=$bucket_time"
-        & {while ($true) {
-            # Test-Connection $Destination -ping -Continuous
-            $data = @()
-            while (!($data)) {
-                sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
+        & {
+			while ($true) {
+				# Test-Connection $Destination -ping -Continuous
+				$data = @()
+				while (!($data)) {
+					sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
 
-                foreach ($job in $jobs) {
-                    if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
-                }
-                
-                # $data
-                if ($data) {
-                    # data contain these properties:
-                    #     sent_at <-get-date
-                    #     Status 
-                    #     RTT 
-                    # ?{$_} ignores some $null data -- don't know why they are there
-                    $data | ?{$_} | ?{$_.status -ne 'Success'} | %{
-                        [Console]::Error.Write("X:$($_.target)  ")
-                    }
-                    $data_sorted = ($data | ?{$_} | ?{$_.status -eq 'Success'} |  sort-object -property sent_at)
-                    #write-verbose "<---data---"
-                    $data_sorted | %{write-verbose "        $($_.sent_at).$($_.sent_at.millisecond) $($_.RTT) $($_.target) $($_.debug)"} 
-                            #sent_at=01/26/2023 17:44:26; Status=Success; RTT=180; target=8.8.8.8; debug=;
-                    #write-verbose "--->"
-                    write-verbose "<---bucket---"
-                    write-verbose " "
+					foreach ($job in $jobs) {
+						if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
+					}
+					
+					# $data
+					if ($data) {
+						# data contain these properties:
+						#     sent_at <-get-date
+						#     Status 
+						#     RTT 
+						if ($parallel_testing) {
+							# ?{$_} ignores some $null data -- don't know why they are there
+							$data | ?{$_} | ?{$_.status -ne 'Success'} | %{
+								[Console]::Error.Write("X:$($_.target)  ")
+							}
+							$data_sorted = ($data | ?{$_} |  sort-object -property sent_at)
+							#write-verbose "<---data---"
+							$data_sorted | %{write-verbose "        $($_.sent_at).$($_.sent_at.millisecond) $($_.RTT) $($_.target) $($_.debug)"} 
+									#sent_at=01/26/2023 17:44:26; Status=Success; RTT=180; target=8.8.8.8; debug=;
+							#write-verbose "--->"
+							write-verbose "<---bucket---"
+							write-verbose " "
 
-                    $data_sorted | %{
-                        $msec_dif = [math]::abs(($_.sent_at - $bucket_time).TotalMilliseconds)
-                        write-verbose ("$_" -replace 'PSComputerName.*')
-                        write-verbose "msec_dif:  $msec_dif, bucket_time=$bucket_time, sent_at=$($_.sent_at)"
-                        if ($msec_dif -lt 300) {
-                            # this ping is very close to the previous -- add it to existing bucket
-                            $bucket += $_
-                        } else {
-                            # this ping is far from the previous -- process the currect bucket
-                            if ($bucket) {
-                                if (($bucket).Status -contains 'Success') {
-                                    $bucket_status = 'Success'
-                                } else {
-                                    $bucket_status = $bucket[0].Status # status from the 1st item in the bucket
-                                }
-                                $ok_pings = [array]($bucket | ?{$_.Status -eq 'Success'})
-                                if ($ok_pings) {$ok_pings = $ok_pings.length} else {$ok_pings=0}
-                                $ping_count += 1
-                                $output = [PSCustomObject]@{`
-                                    sent_at = (($bucket).sent_at | measure -Minimum).minimum; `
-                                    Status = $bucket_status; `
-                                    RTT = (($bucket).RTT | measure -Minimum).minimum; `
-                                    ping_count = $ping_count; `
-                                    destination = ($bucket.target) -join ";"; `
-                                    bucket_pings = $bucket.length; `
-                                    bucket_ok_pings = $ok_pings; `
-                                    debug = ($bucket.debug) -join ""
-                                }
-                                $ping_count += 1
-                                $bucket_time = $_.sent_at
-                                write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
-                                $bucket = @()
-                                write-verbose ""
-                                write-verbose "<==============output=============="
-                                echo $output
-                                write-verbose "=======>"
-                                
-                            } else {
-                                write-verbose ":::The bucket is EMPTY"
-                            }
-                            $bucket = [array]$_ # this ping is the 1st in a new bucket
-                            $bucket_time = $_.sent_at
-                            write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
-                        }
-                    }
-                    $data = @()
-                }
-            }
-            }
-            } | Format-PingTimes `
-                -Target $Target `
-                -PingsPerSec $PingsPerSec `
-                -UpdateScreenEvery $UpdateScreenEvery -Title $Title -GraphMax $GraphMax `
-                -GraphMin $GraphMin -BucketsCount $BucketsCount `
-                -AggregationSeconds $AggregationSeconds -HistSamples $HistSamples `
-                -DebugMode $DebugMode -BarGraphSamples $BarGraphSamples `
-                -HighResFont $script:HighResFont
+							$data_sorted | %{
+								if ($_.status -eq 'Success' -and $last_success_at -lt $_.sent_at) {
+									# if later I receive packets with sent_at before this
+									# timestamp I will discard them (it is obviously a timeout
+									# that came delayed by one or more seconds
+									$last_success_at = $_.sent_at
+								}
+								if ($_.sent_at -lt $last_success_at) {
+									# ignore this packet
+									write-verbose ":::Ignoring late packet at sent_at=$($_.sent_at)"
+								} else {
+									# process packet
+									$msec_dif = [math]::abs(($_.sent_at - $bucket_time).TotalMilliseconds)
+									write-verbose ("$_" -replace 'PSComputerName.*')
+									write-verbose "msec_dif:  $msec_dif, bucket_time=$bucket_time, sent_at=$($_.sent_at)"
+									if ($msec_dif -lt 300) {
+										# this ping is very close to the previous -- add it to existing bucket
+										$bucket += $_
+									} else {
+										# this ping is far from the previous -- process the currect bucket
+										if ($bucket) {
+											if (($bucket).Status -contains 'Success') {
+												$bucket_status = 'Success'
+											} else {
+												$bucket_status = $bucket[0].Status # status from the 1st item in the bucket
+											}
+											$ok_pings = [array]($bucket | ?{$_.Status -eq 'Success'})
+											if ($ok_pings) {$ok_pings = $ok_pings.length} else {$ok_pings=0}
+											$ping_count += 1
+											$output = [PSCustomObject]@{`
+												sent_at = (($bucket).sent_at | measure -Minimum).minimum; `
+												Status = $bucket_status; `
+												RTT = (($bucket).RTT | measure -Minimum).minimum; `
+												ping_count = $ping_count; `
+												destination = ($bucket.target) -join ";"; `
+												bucket_pings = $bucket.length; `
+												bucket_ok_pings = $ok_pings; `
+												debug = ($bucket.debug) -join ""
+											}
+											$ping_count += 1
+											$bucket_time = $_.sent_at
+											write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
+											$bucket = @()
+											write-verbose ""
+											write-verbose "<==============output=============="
+											echo $output
+											write-verbose "=======>"
+											
+										} else {
+											write-verbose ":::The bucket is EMPTY"
+										}
+										$bucket = [array]$_ # this ping is the 1st in a new bucket
+										$bucket_time = $_.sent_at
+										write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
+									}
+								}
+							}
+							$data = @()
+						} else {
+							# non-parallel single host mode of operation ($parallel_testing=$false)
+							$data_sorted = ($data | ?{$_} | sort-object -property sent_at)
+							$data = @()
+							$data_sorted | %{
+								$ok_pings = 0
+								if ($_.status -eq 'Success') {$ok_pings = 1}
+								$output = [PSCustomObject]@{`
+									sent_at = $_.sent_at; `
+									Status = $_.status; `
+									RTT = $_.RTT; `
+									ping_count = $_.ping_count; `
+									destination = $_.target; `
+									bucket_pings = 1; `
+									bucket_ok_pings = $ok_pings; `
+									debug = ""
+								}
+								echo $output
+							}
+						}
+					}
+				}
+			}
+		} | Format-PingTimes `
+			-Target $Target `
+			-PingsPerSec $PingsPerSec `
+			-UpdateScreenEvery $UpdateScreenEvery 
+			-Title $Title -GraphMax $GraphMax `
+			-GraphMin $GraphMin 
+			-HistBucketsCount $HistBucketsCount `
+			-AggregationSeconds $AggregationSeconds 
+			-HistSamples $HistSamples `
+			-DebugMode $DebugMode 
+			-BarGraphSamples $BarGraphSamples `
+			-HighResFont $script:HighResFont
+			#>	
     }
     finally { # when done
         # AFTER A CTRL-C
