@@ -1,4 +1,4 @@
-# What is it?
+## What is it?
 
 Out-PingStats displays nice, detailed and easy to understand graphs 
 that help you assess the short and long-term quality of your 
@@ -8,13 +8,13 @@ leaving your PowerShell terminal 🙂
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
-# Why would you want to use it? 
+## Why would you want to use it? 
 
-### You want to evaluate the quality of a connection for minutes or hours 
+#### You want to evaluate the quality of a connection for minutes or hours 
 
 Out-PingStats can easily and **nicely** display a few hours worth of data in one screen.
 
-### You want to evaluate the uplink quality of a large network
+#### You want to evaluate the uplink quality of a large network
 
 In such cases one will typically `ping google.com`
 but some times google.com will throttle incoming packets and 
@@ -38,18 +38,18 @@ Out-PingStats is immune to this problem.
   the host you ping.
 </details>
 
-### You find graphs easier to interpret compared to a huge list of numbers
+#### You love your PowerShell but prefer graphs over a long list of numbers
 
 Sorry robots, this is for humans :-)
 
-## TLDR How to try it out
+### TLDR How to try it out
 
-### Step 1. Install depedencies 
+#### Step 1. Install depedencies 
 
     # Run this from an admin PowerShell
     Install-Module -Name ThreadJob 
     
-### Step 2. Try it out
+#### Step 2. Try it out
 
    1. Quick'n'dirty test of your internet connection:
 
@@ -62,7 +62,7 @@ Sorry robots, this is for humans :-)
 
 Your graphs will be nice but probably not "high quality". Read below about selecting a font that will display perfect graphs.
 
-## How to use
+### How to use
 
     # To test Internet quality 
     Out-PingStats   
@@ -72,7 +72,7 @@ Your graphs will be nice but probably not "high quality". Read below about selec
 
 If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
 
-## Understanding the graphs
+### Understanding the graphs
 
 The **LAST RTTs** graph at the top shows one bar for every ping/DNS query.
 It's a bit better than looking at the text output of the ping command.
@@ -85,7 +85,7 @@ If you don't know what a histogram is take a look at [wikipedia](https://en.wiki
 In any case you will need some experience with this graph to get a feeling of what is *normal* and what is not but I think it worths the small effort.
 Take a look at the examples below for a quick start.
 
-### Slow updating graphs
+#### Slow updating graphs
 
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
 Each bar in them represents some **indicator of network quality** that is computed 
@@ -111,7 +111,7 @@ This outlier would completely ruin your plot and provides almost no information 
 (we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
 
-## Regarding the terminal font
+### Regarding the terminal font
 
 If your terminal font contains unicode block characters (like these: ▁▂▃▄▅▆▇█)
 then you can add the `-HighResFont $true` option to get
@@ -128,16 +128,16 @@ If you are seeing low-resolution graphs, you can download the free and very nice
 install it by double-clicking on the ttf file and clicking install, 
 and then configure your PowerShell terminal to use it.
 
-## Other features
+### Other features
 
-### Periodic screen dump to a file
+#### Periodic screen dump to a file
 
 Every time Out-PingStats updates the slow graphs, it dumps the screen to a file
 named  `ops.<START-TIME>.screen` inside your %TEMP%
 folder.  So if after closing the program you want to view its last output
 you only have to `cat` this file.
 
-### Saved RTT measurements
+#### Saved RTT measurements
 
 Out-PingStats also records every RTT time measured to a text file named 
 `ops.<START-TIME>.pingrec` in your %TEMP% folder. The file has one line per 
@@ -145,17 +145,17 @@ minute starting with the timestamp `hhmm:`. After the timestamp follows one
 character per measurement. The character is `[char]($RTT+34)` 
 (e.g. `A` for 31msec, `B` for 32msec, etc)
 
-## Histogram examples
+### Histogram examples
 
-### Histogram of a not so good wifi connection
+#### Histogram of a not so good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
 
-### Histogram of a good wifi connection
+#### Histogram of a good wifi connection
 
 ![image](https://user-images.githubusercontent.com/4411400/204652036-79f1b56c-1866-4508-b6af-0e8beddc1e5a.png)
 
-# Parameters
+## Parameters
     -PingsPerSec
 
 Pings per second to perform.
@@ -180,9 +180,9 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
     -BarGraphSamples 20    (by default fills screen width) 
     -HighResFont $true   (read above Re: fonts)
 
-# Other details
+## Other details
 
-## Parallel pings/smart aggregation
+### Parallel pings/smart aggregation
 
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
 To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
@@ -191,7 +191,7 @@ This way we minimize the chances of our pings getting throttled.
 If at least two replies are received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
 We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
 
-### About the algorithm for RTT Normalization 
+#### About the algorithm for RTT Normalization 
 
 When we are reading RTTs from one and then another host with different average times 
 it will appear as though there is jitter. To minimize this effect we use
