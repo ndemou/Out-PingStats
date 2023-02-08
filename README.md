@@ -95,21 +95,28 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
 > **For all these graphs the lower the better**
 
-**RTT BASELINE** displays the minimum RTT and **RTT VARIANCE** 
-displays the difference `almost_max - min` for the period. 
-`Almost_max` is in fact is the 95th percentile (`p95`) of RTTs. 
-In simple words, none of the pings had an `RTT < BASELINE`, for 95% of them we had `BASELINE < RTT <
-BASELINE + VARIANCE` and for 5% of them we had `RTT > BASELINE + VARIANCE`. 
+**RTT BASELINE** displays the minimum RTT
 
-We use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
-we have to deal with **most** of the time. 
-This proves to be very handy because spurious high RTTs are very common and may appear all over the place.
-E.g. you may have 199 pings below 20msec and one at 500msec or 900msec. 
-This outlier would completely ruin your plot and provides almost no information on the quality of the line.
+**RTT VARIANCE** displays the difference `Almost_Max - min`. (See bellow for more info) 
 
-**LOSS%** is exactly what you guess, and **ONE-WAY JITTER** is an aproximation of the one-way jitter 
+**LOSS%** is exactly what you guess
+
+**ONE-WAY JITTER** is an aproximation of the one-way jitter 
 (we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
+
+`Almost_max` is in fact the 95th percentile (`p95`) of RTTs. 
+So in simple words, none of the pings have an `RTT < BASELINE`, 95% of them have `BASELINE < RTT <
+BASELINE + VARIANCE` and 5% of them have `RTT > BASELINE + VARIANCE`. 
+
+I use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
+we have to deal with **most** of the time. 
+This is usualy useful because spurious high RTTs are very common and may get extreme values.
+You may, for example, have 119 pings below 20msec and one at 820msec during a 2 minute period. 
+If ploted, that 820msec outlier,  will skew the scale of your plot extremely while, at the same time provide 
+little information on the quality of the line during that 2min period.
+
+I should confess though, that **the selection of the 95th percentile is rather arbitrary and more a result of intuition & *taste* than of investigation or knowledge** on the subject.
 
 ### Regarding the terminal font
 
