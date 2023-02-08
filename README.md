@@ -95,19 +95,17 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
 > **For all these graphs the lower the better**
 
-**RTT BASELINE** displays the minimum RTT
+**RTT BASELINE** `= min(RTT)` for the period.
 
-**RTT VARIANCE** displays the difference `Almost_Max - min`. (See bellow for more info) 
+**RTT VARIANCE** `= AlmostMax(RTT) - min(RTT)` for the period. (See bellow for more info) 
 
-**LOSS%** is exactly what you guess
+**LOSS%** is the percent of the lost pings during the period.
 
-**ONE-WAY JITTER** is an aproximation of the one-way jitter 
+**ONE-WAY JITTER** is an aproximation of the one-way jitter. 
 (we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
 
-`Almost_max` is in fact the 95th percentile (`p95`) of RTTs. 
-So in simple words, none of the pings have an `RTT < BASELINE`, 95% of them have `BASELINE < RTT <
-BASELINE + VARIANCE` and 5% of them have `RTT > BASELINE + VARIANCE`. 
+`AlmostMax` is the 95th percentile (`p95`) of RTTs. So in simple words, during a period none of the pings have an `RTT < BASELINE`, 95% of them have `BASELINE < RTT < BASELINE + VARIANCE` and 5% of them have `RTT > BASELINE + VARIANCE`. 
 
 I use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
 we have to deal with **most** of the time. 
