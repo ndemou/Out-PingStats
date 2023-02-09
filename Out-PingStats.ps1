@@ -1,5 +1,5 @@
 <#
-    v0.15
+    v0.16
 
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
@@ -369,7 +369,11 @@ Function Start-MultiDnsQueries {
         if ($ping_count -le 10) {
             $effective_RTT = $RTT
         } else {
-            $effective_RTT = [math]::max(0, $RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+            if ($RTT -eq 9999) {
+                $effective_RTT = 9999
+            } else {
+                $effective_RTT = [math]::max(0, $RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+            }
         }
         # return this:
         [PSCustomObject]@{`
@@ -464,7 +468,7 @@ Function Start-MultiPings {
 		} catch {
 			$ret =[PSCustomObject]@{`
 				Status = $Error[0].Exception.GetType().FullName; `
-				RTT = 0; `
+				RTT = 9999; `
 				target = $target `
 			}
 		}
@@ -489,7 +493,12 @@ Function Start-MultiPings {
             $avg_of_mins = ($min_of_last_RTTs.values | measure -Average).average
         }
         
-        $effective_RTT = [math]::max(0, $real_RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+        if ($real_RTT -eq 9999) {
+            $effective_RTT = 9999
+        } else {
+            $effective_RTT = [math]::max(0, $real_RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+        }
+
         # return this:
         [PSCustomObject]@{`
             sent_at = $sent_at; `
@@ -543,7 +552,7 @@ Function Start-SpecialPing {
 		} catch {
 			$ret =[PSCustomObject]@{`
 				Status = $Error[0].Exception.GetType().FullName; `
-				RTT = 0; `
+				RTT = 9999; `
 				target = $target `
 			}
 		}
@@ -1369,7 +1378,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
         if (($script:AggPeriodSeconds -ge $AggregationSeconds) -and ($RTT_values.count -gt 2)) {
             # This code executes once every AggPeriodSeconds
-            $AggPeriodStart = (get-date)
+            $AggPeriodStart = (get-date) # FIXME must subtract as many seconds as we are already after the AggregationSeconds
             if (!($DebugMode)) {$script:full_redraw = $true}
 
             # a lot of data are derived from the last $AggregationSeconds values of $RTT_values
@@ -1382,6 +1391,10 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 $stats = (stats_of_series $last_hist_secs_values_no_lost)
                 $Variance_values.enqueue($stats.p95 - $stats.min)
                 $Baseline_values.enqueue($stats.min)
+                if ($DebugData) {
+                    "Baseline_values = $($stats.min) Variance_values=$($stats.p95 - $stats.min) from these data: $last_hist_secs_values_no_lost" >> "$($env:TEMP)\ops.$ts.data"
+                }
+
             } else {
                 # all pings were lost...
                 $Variance_values.enqueue(0)
@@ -1497,6 +1510,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         [int]$HistSamples=-1,
         [char]$Visual = '=',
         [int]$DebugMode = 0,
+        [switch]$DebugData,
         [int]$HighResFont = -1, # -1=auto
 
         [double]$UpdateScreenEvery = 1,
@@ -1607,11 +1621,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 						#     RTT 
 						if ($parallel_testing) {
 							# ?{$_} ignores some $null data -- don't know why they are there
-							$data | ?{$_} | ?{$_.status -ne 'Success'} | %{
-								[Console]::Error.Write("X:$($_.target)  ")
-							}
 							$data_sorted = ($data | ?{$_} |  sort-object -property sent_at)
 							#write-verbose "<---data---"
+                            if ($DebugData) {
+                                $data_sorted | ft >> "$($env:TEMP)\ops.$ts.data"
+                            }
 							$data_sorted | %{write-verbose "        $($_.sent_at).$($_.sent_at.millisecond) $($_.RTT) $($_.target) $($_.debug)"} 
 									#sent_at=01/26/2023 17:44:26; Status=Success; RTT=180; target=8.8.8.8; debug=;
 							#write-verbose "--->"
@@ -1665,7 +1679,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 											write-verbose "<==============output=============="
 											echo $output
 											write-verbose "=======>"
-											
+                                            if ($DebugData) {
+                                                $output | ft >> "$($env:TEMP)\ops.$ts.data"
+                                            }
+
 										} else {
 											write-verbose ":::The bucket is EMPTY"
 										}
@@ -1702,13 +1719,13 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 		} | Format-PingTimes `
 			-Target $Target `
 			-PingsPerSec $PingsPerSec `
-			-UpdateScreenEvery $UpdateScreenEvery 
+			-UpdateScreenEvery $UpdateScreenEvery `
 			-Title $Title -GraphMax $GraphMax `
-			-GraphMin $GraphMin 
+			-GraphMin $GraphMin `
 			-HistBucketsCount $HistBucketsCount `
-			-AggregationSeconds $AggregationSeconds 
+			-AggregationSeconds $AggregationSeconds `
 			-HistSamples $HistSamples `
-			-DebugMode $DebugMode 
+			-DebugMode $DebugMode `
 			-BarGraphSamples $BarGraphSamples `
 			-HighResFont $script:HighResFont
 			#>	
