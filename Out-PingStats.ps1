@@ -3,7 +3,6 @@
 
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
-      (instead of showing the drops as they happen in stderr like I do)
       (maybe show them next to the histogram)
 TODO: In Histogram show the actual values instead of min... and ...MAX
 TODO: Print clock time every 10 or 20 vertical bars
@@ -63,13 +62,29 @@ TODO: I could probably add a heatmap with 2 periods per character.
 
 <# Re: targets for pinging & DNS querying
    ===========================================
+   THE BASIC FACTS
+   ---------------
    The hosts of one line are queried/pinged in order ONE AFTER THE OTHER
    Every line is queried/pinged IN PARALLEL WITH EVERY OTHER LINE
-   It's best to have at least 4 hosts in each line so that if you ping
+
+   ADVICE
+   ------
+   It's best to have AT LEAST 4 hosts in each line so that if you ping
    every 1/2sec you are pinging each host at a slow pace of 1 ping per 2 seconds
    
    Don't add a DNS server to both lists even if it responds to pings
    They seem to throtle their packets per second
+   
+   MORE DETAILS
+   ------------
+   Although you may be tempted to think that all hosts of one column are 
+   pinged in parallel that will only be true if all hosts respond without 
+   timing out. As soon as one host times out the order is messed up.
+   So after a while the only thing you can be sure of is that 
+   some host of some line is pinged in parallel with some random 
+   host in some other line, and some other random host in another line
+   and so on...
+
 #>
 $DNS_TARGET_LIST = @(`
     @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4'        ),
@@ -88,9 +103,15 @@ $DNS_TARGET_LIST = @(`
 # https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
 $PING_TARGET_LIST = @(`
     @('95.142.107.181', '185.206.224.67', '195.201.213.247', '5.152.197.179' ),
-    @('92.204.243.227', '195.12.50.155',  '46.248.187.100', 'hi.com'         ),
-    @('facebook.com'  , 'bc.com'        , 'google.com'    , 'cd.com'         ),
-    @('outlook.com',    'gmail.com',      'ef.com',         'mn.com'         )
+    @('92.204.243.227', '195.12.50.155',  '46.248.187.100', 'aa.com'         ),
+    @('facebook.com'  , 'outlook.com',     'google.com'    , 'ad.com'         ), 
+    @('ai.com','aj.com','ak.com','am.com'),
+    @('ao.com','ap.com','aq.com','as.com'),
+    @('au.com','av.com','bb.com','bc.com'),
+    @('be.com','bf.com','bg.com','bi.com'),
+    @('bk.com','bl.com','bo.com','bq.com'),
+    @('bv.com','bw.com','bx.com','bz.com'),
+    @('cb.com','cd.com','ce.com','cg.com')
 )
 <#
   BAD DNS servers 
@@ -477,7 +498,7 @@ Function Start-MultiPings {
         $ping_count += 1
         if ($ret.Status -ne 'Success') {
             # failed ping
-            $real_RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
+            $real_RTT = 9999
             $failures[$target] = [math]::min(9, $failures[$target]+1) # don't go over 9
             $debug_msg += "$($target): $($failures[$target]) con.fail. "
         } else {
