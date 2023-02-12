@@ -1,6 +1,10 @@
 <#
-    v0.16
+    v0.19
 
+v0.19 Greatly improved normilization algorithm
+v0.18 major upgrade: average of minimum algo also to normalize the RTTs
+      of all the different groups
+	  
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
       (maybe show them next to the histogram)
@@ -81,41 +85,169 @@ TODO: I could probably add a heatmap with 2 periods per character.
    pinged in parallel that will only be true if all hosts respond without 
    timing out. As soon as one host times out the order is messed up.
    So after a while the only thing you can be sure of is that 
-   some host of some line is pinged in parallel with some random 
-   host in some other line, and some other random host in another line
+   some host of some line is pinged in parallel with a random 
+   host of another line, and some random host of another line
    and so on...
-
 #>
 $DNS_TARGET_LIST = @(`
-    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4'        ),
-    @('208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'        ),
-    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ),
-    @('185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
-    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ),
-    @('216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
-    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ),
-    @('216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
-    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ),
-    @('195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   ),
-    @('77.88.8.88',      '77.88.8.2',       '77.88.8.7',       '77.88.8.3'      )
+    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4',        '208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'),
+    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ,'185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
+    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ,'216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
+    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ,'216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
+    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
 )
-# Numeric IPs below are from EUROPE
-# https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
+
+
+
 $PING_TARGET_LIST = @(`
-    @('95.142.107.181', '185.206.224.67', '195.201.213.247', '5.152.197.179' ),
-    @('92.204.243.227', '195.12.50.155',  '46.248.187.100', 'aa.com'         ),
-    @('facebook.com'  , 'outlook.com',     'google.com'    , 'ad.com'         ), 
-    @('ai.com','aj.com','ak.com','am.com'),
-    @('ao.com','ap.com','aq.com','as.com'),
-    @('au.com','av.com','bb.com','bc.com'),
-    @('be.com','bf.com','bg.com','bi.com'),
-    @('bk.com','bl.com','bo.com','bq.com'),
-    @('bv.com','bw.com','bx.com','bz.com'),
-    @('cb.com','cd.com','ce.com','cg.com')
+	@('2.19.51.63','170.49.49.66','52.85.158.24','104.18.1.128','104.18.86.87','104.18.174.72','104.16.135.38','104.18.29.192'),
+	@('76.223.65.111','104.22.7.73','92.123.88.8','13.248.196.236','104.18.18.10','1.1.1.1','104.26.2.96','13.248.160.137'),
+	@('75.2.93.210','13.248.216.40','3.33.176.117','52.85.158.64','104.18.27.236','104.18.202.79','172.67.71.222','52.85.158.106'),
+	@('76.76.21.21','217.114.94.2','52.85.158.88','62.169.226.23','104.22.70.236','104.107.154.205','104.107.153.13','104.17.208.47'),
+	@('15.197.142.173','104.17.85.88','104.26.0.179','184.168.131.241','104.16.122.96','104.17.135.55','84.254.12.27','104.22.71.131'),
+	@('52.85.158.120','52.85.158.34','104.107.154.112','3.33.139.32','104.26.4.172','104.107.155.109','13.248.192.179','141.193.213.10'),
+	@('52.85.158.97','172.67.70.62','172.66.41.43','52.85.158.98','141.193.213.11','162.159.129.11','52.85.158.117','52.85.158.41'),
+	@('104.22.9.75','104.18.11.141','75.2.60.5','104.122.212.115','160.153.0.112','13.248.243.5','162.159.135.42','52.85.158.61'),
+	@('52.85.158.54','172.67.73.230','13.248.172.93','104.22.77.82','52.85.158.25','141.193.213.21','23.227.38.74','162.159.130.84'),
+	@('76.223.105.230','172.66.40.67','76.223.34.124','199.59.243.222','104.18.72.237','104.18.13.126','13.248.187.189','13.248.162.114'),
+	@('104.18.99.229','104.18.216.68','104.18.36.69','52.85.158.11','104.26.2.177','172.67.73.224','104.18.149.59','192.200.160.248'),
+	@('104.26.14.147','104.18.7.54','99.83.136.155','52.85.158.83','165.215.204.68','199.60.103.74','3.33.152.147','151.101.194.159'),
+	@('151.101.130.132','104.107.153.29','52.85.158.95','216.239.34.21','151.101.195.10','34.102.136.180','216.239.32.21','151.101.1.195'),
+	@('104.18.34.213','152.199.21.98','104.20.82.247','75.2.70.75','23.185.0.1','52.85.158.8','34.117.83.221','75.2.52.182'),
+	@('192.124.249.109','151.101.193.135','23.185.0.4','104.107.144.95','104.19.191.28','151.101.194.49','52.85.158.77','151.101.2.159'),
+	@('52.85.158.5','104.20.172.41','130.211.7.63','141.193.213.20','104.26.2.95','3.33.228.28','104.18.3.176','151.101.131.10'),
+	@('172.66.43.190','199.60.103.30','104.18.33.19','192.124.249.27','216.239.38.21','23.227.38.65','75.2.40.207','192.124.249.17'),
+	@('99.83.190.102','192.0.78.25','172.67.71.24','216.239.36.21','13.107.237.45','52.85.158.17','104.22.40.88','104.26.13.247'),
+	@('2.21.69.138','199.16.172.42','13.107.246.40','151.101.65.124','75.2.26.18','75.2.64.137','192.0.66.2','52.85.158.31'),
+	@('199.60.103.52','192.124.249.105','172.67.129.46','192.124.249.127','185.53.178.52','208.91.204.251','204.74.99.103','185.53.178.50'),
+	@('170.33.13.246','185.53.178.54','185.53.177.31','172.67.129.156','194.97.137.224','192.0.66.184','84.242.9.12','146.75.122.114'),
+	@('172.67.208.201','192.0.78.228','185.60.251.251','104.21.72.127','104.21.17.225','91.250.65.34','172.67.214.35','172.67.195.18'),
+	@('104.21.18.72','85.10.214.235','173.212.244.233','91.195.240.135','172.67.201.226','82.98.81.5','104.21.75.192','217.160.0.59'),
+	@('104.21.7.143','212.86.203.242','91.195.241.232','104.21.34.17','104.21.57.136','136.243.235.86','104.64.166.238','64.190.63.111'),
+	@('104.21.85.239','104.21.15.26','104.21.14.123','104.21.55.196','194.77.47.146','85.187.142.74','185.53.177.52','193.53.247.79')
 )
 <#
+  Pingable hosts: https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
+
   BAD DNS servers 
+  ---------------
   '84.200.70.40','91.239.100.100', '89.233.43.71'
+
+  ALL ??.COM HOSTS THAT RESPOND TO PING (?=some letter)
+  -----------------------------------------------------
+
+    # in groups of 10
+    'aa.com','ad.com','ae.com','af.com','ai.com','aj.com','ak.com','am.com','ao.com','ap.com',
+    'aq.com','as.com','au.com','av.com','bb.com','bc.com','be.com','bf.com','bg.com','bi.com',
+    'bk.com','bl.com','bo.com','bq.com','bv.com','bw.com','bx.com','bz.com','cb.com','cd.com',
+    'ce.com','cg.com','ci.com','cj.com','ck.com','cl.com','cm.com','co.com','cs.com','cu.com',
+    'cv.com','cw.com','dc.com','dh.com','dl.com','dn.com','dr.com','ds.com','dt.com','dv.com',
+    'dw.com','dx.com','dz.com','ea.com','eb.com','ed.com','ef.com','ei.com','ej.com','ek.com',
+    'el.com','er.com','es.com','ev.com','ew.com','ey.com','ez.com','fa.com','fb.com','fc.com',
+    'fd.com','fe.com','fj.com','fn.com','fp.com','fs.com','ft.com','ga.com','gd.com','ge.com',
+    'gf.com','gg.com','gl.com','go.com','gq.com','gr.com','gs.com','gu.com','gv.com','gw.com',
+    'gx.com','gz.com','ha.com','hb.com','hc.com','he.com','hf.com','hi.com','hm.com','hq.com',
+    'hr.com','ht.com','hv.com','ib.com','id.com','ie.com','ii.com','il.com','in.com','ip.com',
+    'iq.com','ir.com','is.com','it.com','iv.com','jb.com','jd.com','jk.com','jl.com','jm.com',
+    'jn.com','jp.com','js.com','jw.com','jy.com','ka.com','kc.com','kd.com','ke.com','kh.com',
+    'kj.com','kk.com','kn.com','ks.com','ku.com','kw.com','ky.com','la.com','ld.com','le.com',
+    'li.com','lj.com','lk.com','ln.com','lo.com','lp.com','lr.com','lu.com','lx.com','ly.com',
+    'ma.com','md.com','mg.com','mj.com','mn.com','mp.com','ms.com','mt.com','mu.com','mx.com',
+    'my.com','mz.com','na.com','nd.com','ne.com','nl.com','nn.com','no.com','np.com','nt.com',
+    'nw.com','oa.com','oc.com','oe.com','oj.com','ok.com','ol.com','om.com','on.com','oo.com',
+    'op.com','or.com','ov.com','oy.com','oz.com','pd.com','pi.com','pn.com','pp.com','pq.com',
+    'pt.com','pu.com','pv.com','py.com','qa.com','qb.com','qd.com','qf.com','qh.com','qj.com',
+    'qk.com','qm.com','qn.com','qo.com','qp.com','qq.com','qw.com','qy.com','qz.com','ra.com',
+    'rc.com','rh.com','ri.com','rj.com','rk.com','rl.com','ro.com','rv.com','ry.com','rz.com',
+    'sc.com','sh.com','si.com','sk.com','sl.com','sm.com','sn.com','so.com','sq.com','ss.com',
+    'sy.com','td.com','tf.com','th.com','tk.com','tn.com','to.com','tp.com','tr.com','ts.com',
+    'tt.com','tu.com','tw.com','tx.com','uc.com','ud.com','ui.com','uj.com','um.com','un.com',
+    'up.com','uq.com','ut.com','ux.com','vb.com','vh.com','vi.com','vk.com','vl.com','vn.com',
+    'vp.com','vq.com','vs.com','vu.com','vv.com','vw.com','vx.com','vy.com','vz.com','wg.com',
+    'wk.com','wl.com','wm.com','wo.com','wp.com','wq.com','ws.com','wt.com','wv.com','ww.com',
+    'wz.com','xa.com','xb.com','xd.com','xe.com','xf.com','xh.com','xi.com','xk.com','xl.com',
+    'xm.com','xp.com','xq.com','xr.com','xs.com','xv.com','xx.com','xy.com','yc.com','yd.com',
+    'ye.com','yf.com','yg.com','yo.com','yw.com','yy.com','zb.com','zf.com','zg.com','zj.com',
+    'zl.com','zn.com','zo.com','zv.com','zw.com','zy.com',
+    
+    # In groups of 4
+    'aa.com','ad.com','ae.com','af.com',
+    'ai.com','aj.com','ak.com','am.com',
+    'ao.com','ap.com','aq.com','as.com',
+    'au.com','av.com','bb.com','bc.com',
+    'be.com','bf.com','bg.com','bi.com',
+    'bk.com','bl.com','bo.com','bq.com',
+    'bv.com','bw.com','bx.com','bz.com',
+    'cb.com','cd.com','ce.com','cg.com',
+    'cs.com','ct.com','cu.com','cv.com',
+    'cw.com','dc.com','dh.com','dl.com',
+    'dn.com','dq.com','dr.com','ds.com',
+    'dt.com','dv.com','dw.com','dx.com',
+    'dz.com','ea.com','eb.com','ed.com',
+    'ef.com','ei.com','ej.com','ek.com',
+    'el.com','er.com','es.com','ev.com',
+    'ew.com','ey.com','ez.com','fa.com',
+    'fb.com','fc.com','fd.com','fe.com',
+    'fj.com','fn.com','fp.com','fs.com',
+    'ft.com','ga.com','gd.com','ge.com',
+    'gf.com','gg.com','gl.com','go.com',
+    'gq.com','gs.com','gu.com','gv.com',
+    'gw.com','gz.com','ha.com','hb.com',
+    'hc.com','he.com','hi.com','hl.com',
+    'hm.com','hq.com','hr.com','ht.com',
+    'hv.com','ib.com','id.com','ih.com',
+    'ii.com','il.com','in.com','ip.com',
+    'iq.com','ir.com','is.com','it.com',
+    'iv.com','jb.com','jd.com','jk.com',
+    'jl.com','jn.com','jp.com','js.com',
+    'jw.com','jy.com','ka.com','kc.com',
+    'kd.com','ke.com','kh.com','kk.com',
+    'kn.com','ks.com','ku.com','kw.com',
+    'la.com','ld.com','le.com','li.com',
+    'lj.com','lk.com','ln.com','lo.com',
+    'lp.com','lr.com','lt.com','lu.com',
+    'lx.com','ly.com','lz.com','ma.com',
+    'md.com','mg.com','mj.com','mn.com',
+    'mp.com','ms.com','mt.com','mu.com',
+    'my.com','mz.com','na.com','nd.com',
+    'ne.com','nn.com','no.com','np.com',
+    'nt.com','nw.com','oa.com','oc.com',
+    'oe.com','oj.com','ok.com','ol.com',
+    'om.com','on.com','oo.com','op.com',
+    'or.com','ov.com','oy.com','oz.com',
+    'pd.com','pi.com','pn.com','pp.com',
+    'pq.com','pt.com','pv.com','px.com',
+    'py.com','qa.com','qb.com','qd.com',
+    'qf.com','qh.com','qj.com','qk.com',
+    'qm.com','qn.com','qo.com','qp.com',
+    'qq.com','qw.com','qx.com','qz.com',
+    'ra.com','rc.com','rh.com','ri.com',
+    'rj.com','rk.com','rl.com','rn.com',
+    'ro.com','rv.com','rx.com','ry.com',
+    'rz.com','sc.com','sh.com','si.com',
+    'sk.com','sl.com','sm.com','sn.com',
+    'so.com','sq.com','sy.com','td.com',
+    'tf.com','th.com','tk.com','tn.com',
+    'to.com','tp.com','tr.com','ts.com',
+    'tt.com','tu.com','tw.com','tx.com',
+    'ua.com','uc.com','ud.com','ui.com',
+    'uj.com','um.com','un.com','up.com',
+    'uq.com','ut.com','ux.com','uz.com',
+    'vb.com','vh.com','vi.com','vl.com',
+    'vn.com','vp.com','vq.com','vs.com',
+    'vu.com','vv.com','vw.com','vx.com',
+    'vy.com','vz.com','wg.com','wk.com',
+    'wl.com','wm.com','wn.com','wo.com',
+    'wp.com','wq.com','ws.com','wv.com',
+    'ww.com','wy.com','wz.com','xa.com',
+    'xb.com','xd.com','xe.com','xf.com',
+    'xh.com','xk.com','xm.com','xp.com',
+    'xq.com','xr.com','xs.com','xv.com',
+    'xx.com','xy.com','yb.com','yc.com',
+    'yd.com','ye.com','yf.com','yg.com',
+    'yo.com','yw.com','yy.com','zb.com',
+    'ze.com','zf.com','zg.com','zi.com',
+    'zj.com','zl.com','zn.com','zo.com',
 #>
 
 # Re: colored printing
@@ -224,8 +356,9 @@ Function Start-DNSQuery {
     # by adjusting the delay between two consequtive pings.
     # NOTE that in case of failure, it returns 999
     Param(
-        [string]$target="8.8.8.8",
-        [int]$Interval = 500
+        [string]$target="1.0.0.1",
+        [int]$Interval = 1000,
+		[int]$TimeOut = 0
     )
 
     if ($TimeOut -eq 0) {$TimeOut = $Interval*0.9}
@@ -248,7 +381,7 @@ Function Start-DNSQuery {
         $ts_end = (Get-Date)
         $ping_count += 1
         if ($status -eq 'Success') {
-            $RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
+            $RTT = [math]::max(1, [int](($ts_end.ticks - $sent_at.ticks)/10000))
         } else {
             $RTT = 9999
         }
@@ -269,9 +402,13 @@ Function Start-DNSQuery {
         [PSCustomObject]@{`
             sent_at = $sent_at; `
             Status = $status; `
+			ts_start = [int](($sent_at.ticks - $ts_first_ping.ticks)/10000); `
+			ts_end = [int](($ts_end.ticks - $ts_first_ping.ticks)/10000); `
+			RTT2 = [math]::round((($ts_end.ticks - $sent_at.ticks)/10000),1); `
             RTT = $RTT; `
             ping_count = $ping_count; `
             target = $target; `
+			group_id = $target; `
             debug = $debug
         }
         if ($sleep_ms -gt 0) {start-sleep -Milliseconds $sleep_ms}
@@ -295,16 +432,29 @@ Function Start-MultiDnsQueries {
         [switch]$TwicePerSec = $False
     )
 
-    # create a hash table to hold the last 10 RTTs of each host
-    $max_values_to_keep = 10
+	function get_median($series){
+		# returns integer median of $series ignoring any 9999 elements
+		# returns 9999 if series is empty (or contains only 9999)
+		# TODO median is not real median if $series has even number of elements
+		$sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
+		if ($sorted) {
+			[int]$sorted[[int]($sorted.count/2)]
+		} else {
+			9999
+		}
+	}
+    # create a hash table to hold the last N RTTs of each host
+	# in order to compute the average of mins which will allow us
+	# to "normalize" the different groups close to a common baseline
+    $max_values_to_keep = 40
     $last_RTTs = @{}
     $failures = @{}
-    $min_of_last_RTTs = @{}
-    $avg_of_mins = 0
+    $AVG_of_last_RTTs = @{}
+    $min_of_AVGs = $null
     $target_list | %{
         $last_RTTs[$_] = New-Object System.Collections.Queue
-        $last_RTTs[$_].enqueue(0)
-        $min_of_last_RTTs[$_] = 0
+        $last_RTTs[$_].enqueue(9999)
+        $AVG_of_last_RTTs[$_] = 99
         $failures[$_] = 0
     }
     
@@ -348,25 +498,29 @@ Function Start-MultiDnsQueries {
             $debug = ''
             $ts_end = (Get-Date)
             if ($status -eq 'Success') {
-                $RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
-                if ($RTT -gt $Interval) {
+                $Real_RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
+				if (($ts_end.ticks - $sent_at.ticks) -eq 0) {
+					# not sure why but I often get 0 ticks diff!
+					# in that case I ignore it and /normalize/ the value to the most recent min
+					$Real_RTT = $AVG_of_last_RTTs[$target] 
+                } elseif ($Real_RTT -gt $Interval) {
                     # RTT is so big that we can as well consider it a failure
                     # (If we don't we create a mess in the main loop where
                     # some late responses are interleaved between good responses)
                     # (Resolve-DnsName does offer a -TimeOut option,
                     # QuickTimeout seems to allow about 7-8sec timeout which is huge
                     # for our purpose)
-                    $RTT  = 9999
+                    $Real_RTT  = 9999
                     $status = 'Failed'
                 }
             } else {
-                $RTT = 9999
+                $Real_RTT = 9999
             }
         } catch {
             $status = $Error[0].Exception.GetType().FullName
             $debug = $status
             $ts_end = (Get-Date)
-            $RTT = 9999
+            $Real_RTT = 9999
         }
 
         $ping_count += 1
@@ -378,34 +532,46 @@ Function Start-MultiDnsQueries {
         } else {
             # succesful ping
             if (($last_RTTs[$target].count -eq 1) -and ($last_RTTs[$target].Peek() -eq 0)) {
-                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy 0
+                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy value
             }
             $failures[$target] = [math]::max(0, $failures[$target]-1)  
-            $last_RTTs[$target].enqueue($RTT)
+            $last_RTTs[$target].enqueue($Real_RTT)
             if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
-            $min_of_last_RTTs[$target] = ($last_RTTs[$target] | measure -Minimum).minimum
-            $avg_of_mins = ($min_of_last_RTTs.values | measure -Average).average
+            $AVG_of_last_RTTs[$target] = get_median $last_RTTs[$target]
+			$old_min_of_AVGs = $min_of_AVGs
+            $new_min_of_AVGs = ($AVG_of_last_RTTs.values | ?{$_ -ne 9999} | measure -Minimum).Minimum
+			if ($min_of_AVGs -eq $null) {
+				$min_of_AVGs = $new_min_of_AVGs
+			} elseif ([math]::abs($new_min_of_AVGs - $old_min_of_AVGs) -gt 50) {
+				$min_of_AVGs = $new_min_of_AVGs
+			} elseif ($new_min_of_AVGs -gt $old_min_of_AVGs) {
+				$min_of_AVGs +=1
+			} elseif ($new_min_of_AVGs -lt $old_min_of_AVGs) {
+				$min_of_AVGs -=1
+			}			
         }
         
         if ($ping_count -le 10) {
-            $effective_RTT = $RTT
+            $effective_RTT = $Real_RTT
         } else {
-            if ($RTT -eq 9999) {
+            if ($Real_RTT -eq 9999) {
                 $effective_RTT = 9999
             } else {
-                $effective_RTT = [math]::max(0, $RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+                $effective_RTT = [math]::max($min_of_AVGs, $Real_RTT + ($min_of_AVGs - $AVG_of_last_RTTs[$target]))
             }
         }
         # return this:
         [PSCustomObject]@{`
             sent_at = $sent_at; `
             Status = $status.tostring(); `
-            RTT = $effective_RTT; `
             target = $target; `
             ping_count = $ping_count; `
-            dt = $RTT - $effective_RTT; `
-            min_of_last_RTTs = $min_of_last_RTTs[$target]; `
-            # avg_of_mins = $avg_of_mins; `
+            RTT = $effective_RTT; `
+            dt = $Real_RTT - $effective_RTT; `
+			real_RTT = $Real_RTT; `
+			AVG_of_last_RTTs = $AVG_of_last_RTTs[$target]; `
+			min_of_AVGs = $min_of_AVGs; `
+			group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
         # sleep until msec =0 (or 500 for $PerSec=2)
@@ -443,16 +609,30 @@ Function Start-MultiPings {
         [switch]$TwicePerSec = $False
     )
 
-    # create a hash table to hold the last 10 RTTs of each host
-    $max_values_to_keep = 10
+	function get_median($series){
+		# returns integer median of $series ignoring any 9999 elements
+		# returns 9999 if series is empty (or contains only 9999)
+		# TODO median is not real median if $series has even number of elements
+		$sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
+		if ($sorted) {
+			[int]$sorted[[int]($sorted.count/2)]
+		} else {
+			9999
+		}
+	}
+
+    # create a hash table to hold the last N RTTs of each host
+	# in order to compute the average of mins which will allow us
+	# to "normalize" the different groups close to a common baseline
+    $max_values_to_keep = 40
     $last_RTTs = @{}
     $failures = @{}
-    $min_of_last_RTTs = @{}
-    $avg_of_mins = 0
+    $AVG_of_last_RTTs = @{}
+    $min_of_AVGs = $null
     $target_list | %{
         $last_RTTs[$_] = New-Object System.Collections.Queue
-        $last_RTTs[$_].enqueue(0)
-        $min_of_last_RTTs[$_] = 0
+        $last_RTTs[$_].enqueue(9999)
+        $AVG_of_last_RTTs[$_] = 9999
         $failures[$_] = 0
     }
     
@@ -490,6 +670,7 @@ Function Start-MultiPings {
 			$ret =[PSCustomObject]@{`
 				Status = $Error[0].Exception.GetType().FullName; `
 				RTT = 9999; `
+				group_id = $target_list[0] + $target_list[1]; `
 				target = $target `
 			}
 		}
@@ -505,30 +686,43 @@ Function Start-MultiPings {
             # succesful ping
             $real_RTT = $ret.RoundtripTime
             if (($last_RTTs[$target].count -eq 1) -and ($last_RTTs[$target].Peek() -eq 0)) {
-                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy 0
+                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy value
             }
             $failures[$target] = [math]::max(0, $failures[$target]-1)  
             $last_RTTs[$target].enqueue($real_RTT)
             if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
-            $min_of_last_RTTs[$target] = ($last_RTTs[$target] | measure -Minimum).minimum
-            $avg_of_mins = ($min_of_last_RTTs.values | measure -Average).average
+            $AVG_of_last_RTTs[$target] = get_median $last_RTTs[$target]
+			$old_min_of_AVGs = $min_of_AVGs
+            $new_min_of_AVGs = ($AVG_of_last_RTTs.values | ?{$_ -ne 9999} | measure -Minimum).Minimum
+			if ($min_of_AVGs -eq $null) {
+				$min_of_AVGs = $new_min_of_AVGs
+			} elseif ([math]::abs($new_min_of_AVGs - $old_min_of_AVGs) -gt 50) {
+				$min_of_AVGs = $new_min_of_AVGs
+			} elseif ($new_min_of_AVGs -gt $old_min_of_AVGs) {
+				$min_of_AVGs +=1
+			} elseif ($new_min_of_AVGs -lt $old_min_of_AVGs) {
+				$min_of_AVGs -=1
+			}			
         }
         
         if ($real_RTT -eq 9999) {
             $effective_RTT = 9999
         } else {
-            $effective_RTT = [math]::max(0, $real_RTT + ($avg_of_mins - $min_of_last_RTTs[$target]))
+            $effective_RTT = [math]::max($min_of_AVGs, $real_RTT + ($min_of_AVGs - $AVG_of_last_RTTs[$target]))
         }
 
         # return this:
         [PSCustomObject]@{`
             sent_at = $sent_at; `
             Status = $ret.Status.tostring(); `
-            RTT = $effective_RTT; `
             target = $target; `
             ping_count = $ping_count; `
-            # RealRTT = $real_RTT; `
-            # avg_of_mins = $avg_of_mins; `
+            RTT = $effective_RTT; `
+            dt = $Real_RTT - $effective_RTT; `
+			real_RTT = $real_RTT; `
+			AVG_of_last_RTTs = $AVG_of_last_RTTs[$target]; `
+			min_of_AVGs = $min_of_AVGs; `
+			group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
         # sleep until msec =0 (or 500 for $PerSec=2)
@@ -574,6 +768,7 @@ Function Start-SpecialPing {
 			$ret =[PSCustomObject]@{`
 				Status = $Error[0].Exception.GetType().FullName; `
 				RTT = 9999; `
+				group_id = $target; `
 				target = $target `
 			}
 		}
@@ -603,6 +798,7 @@ Function Start-SpecialPing {
             Status = $ret.Status.tostring(); `
             RTT = $RTT; `
             ping_count = $ping_count; `
+			group_id = $target; `
             target = $target; `
             debug = ''
         }
@@ -703,6 +899,17 @@ function get_enough_decimal_digits($num) {
         $decimal_digits = 4-$integer_digits
     }
     return $decimal_digits
+}
+function get_median($series){
+	# returns integer median of $series ignoring any 9999 elements
+	# returns 9999 if series is empty (or contains only 9999)
+	# TODO median is not real median if $series has even number of elements
+	$sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
+	if ($sorted) {
+		[int]$sorted[[int]($sorted.count/2)]
+	} else {
+		9999
+	}
 }
 function stats_of_series($series){
     # returns min, median, 95th percentile, max
@@ -1198,7 +1405,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
         $y_max = (y_axis_max $stats.min $stats.max 0 9)
-        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 18  $JITTER_BAR_GRAPH_THEME
+        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 30  $JITTER_BAR_GRAPH_THEME
     }
 
     # display the histogram
@@ -1351,8 +1558,8 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             #-----------------------------
             $RTT_values.enqueue($ms)
             $RespondersCnt_values.enqueue($_.bucket_ok_pings)
-            # ignore the first 10 pings (the sometimes bumpy start)
-            if (($RTT_values.count -eq 11) -and !$bumpy_start_cleanup_done) {
+            # ignore the first few pings (the sometimes bumpy start)
+            if (($RTT_values.count -eq 61) -and !$bumpy_start_cleanup_done) {
                 $bumpy_start_cleanup_done = $true
                 $RTT_values.clear()
                 $RTT_values.enqueue($ms)
@@ -1539,6 +1746,15 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
     )
 
+    # create a hash table to hold the last N RTTs of each group
+	# in order to compute the average of mins which will allow us
+	# to "normalize" the different groups close to a common baseline
+    $max_values_to_keep = 40
+    $last_RTTs = @{}
+    $AVG_of_last_RTTs = @{}
+    $min_of_AVGs = $null
+	#----------------
+
     $script:HighResFont = $HighResFont 
     try {
         $ts = (get-date -format 'yyyy-MM-dd_HH.mm.ss')
@@ -1562,18 +1778,28 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         if ($parallel_testing) {
             $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
             $DNS_TARGET_LIST | %{
+				$group_id = $_[0] + $_[1]
+				$last_RTTs[$group_id] = New-Object System.Collections.Queue
+				$last_RTTs[$group_id].enqueue(99)
+				$AVG_of_last_RTTs[$group_id] = 0
+				
                 $jobs += @((
                     Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiDnsQueries -ScriptBlock {
                         $PingsPerSec = $args[0]
-                        $target = $args[1]
+                        $target_list = $args[1]
                         $CodeOfMultiDnsQueries = $args[2]
                         . Invoke-Expression $CodeOfMultiDnsQueries
                         $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
-                        Start-MultiDnsQueries -target_list $target
+                        Start-MultiDnsQueries -target_list $target_list
                     }
                 ))
             }
             $PING_TARGET_LIST | %{
+				$group_id = $_[0] + $_[1]
+				$last_RTTs[$group_id] = New-Object System.Collections.Queue
+				$last_RTTs[$group_id].enqueue(99)
+				$AVG_of_last_RTTs[$group_id] = 0
+				
                 $jobs +=  @((
                     Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiPings -ScriptBlock {
                             $PingsPerSec = $args[0]
@@ -1602,6 +1828,11 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     }
             ))
 #>
+			$group_id = $target
+			$last_RTTs[$group_id] = New-Object System.Collections.Queue
+			$last_RTTs[$group_id].enqueue(99)
+			$AVG_of_last_RTTs[$group_id] = 0
+
             $jobs += @((
                 start-ThreadJob -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
                     $PingsPerSec = $args[0]
@@ -1613,7 +1844,14 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             ))
         }
         
+		if ($DebugMode) {
+			echo "last_RTTs: $($last_RTTs.keys -join ', ')"
+			echo ""
+			echo "AVG_of_last_RTTs: $($AVG_of_last_RTTs.keys -join ', ')"
+			echo ""
+		}
         
+		
         # MAIN LOOP
         #--------------------------------------
         # We collect the output of the ping-jobs (see above)
@@ -1643,13 +1881,14 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 						if ($parallel_testing) {
 							# ?{$_} ignores some $null data -- don't know why they are there
 							$data_sorted = ($data | ?{$_} |  sort-object -property sent_at)
-							#write-verbose "<---data---"
-                            if ($DebugData) {
-                                $data_sorted | ft >> "$($env:TEMP)\ops.$ts.data"
-                            }
-							$data_sorted | %{write-verbose "        $($_.sent_at).$($_.sent_at.millisecond) $($_.RTT) $($_.target) $($_.debug)"} 
-									#sent_at=01/26/2023 17:44:26; Status=Success; RTT=180; target=8.8.8.8; debug=;
-							#write-verbose "--->"
+							if ($DebugData) {
+								$data_sorted | ft >> "$($env:TEMP)\ops.$ts.data"
+							}
+							if ($debugmode) {
+								write-verbose "<---data_sorted---"
+								$data_sorted | %{write-verbose $_}
+								write-verbose "--->"
+							}
 							write-verbose "<---bucket---"
 							write-verbose " "
 
@@ -1664,6 +1903,32 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 									# ignore this packet
 									write-verbose ":::Ignoring late packet at sent_at=$($_.sent_at)"
 								} else {
+
+									#----------------------------------------------------------
+									# "Normalize" the RTT reported by each group in order to bring 
+									# them close to a _common_ minimum
+									if (($last_RTTs[$_.group_id].count -eq 1) -and ($last_RTTs[$_.group_id].Peek() -eq 0)) {
+										$foo = $last_RTTs[$_.group_id].dequeue() # get rid of the initial dummy value
+									}
+									$last_RTTs[$_.group_id].enqueue($_.RTT)
+									if ($last_RTTs[$_.group_id].count -gt $max_values_to_keep) {$foo = $last_RTTs[$_.group_id].dequeue()}
+									$AVG_of_last_RTTs[$_.group_id] = get_median $last_RTTs[$_.group_id]
+									$old_min_of_AVGs = $min_of_AVGs
+									$new_min_of_AVGs = ($AVG_of_last_RTTs.values | ?{$_ -ne 9999} | measure -Minimum).Minimum
+									if ($min_of_AVGs -eq $null) {
+										$min_of_AVGs = $new_min_of_AVGs
+									} elseif ([math]::abs($new_min_of_AVGs - $old_min_of_AVGs) -gt 50) {
+										$min_of_AVGs = $new_min_of_AVGs
+									} elseif ($new_min_of_AVGs -gt $old_min_of_AVGs) {
+										$min_of_AVGs +=1
+									} elseif ($new_min_of_AVGs -lt $old_min_of_AVGs) {
+										$min_of_AVGs -=1
+									}			
+									if ($_.RTT -ne 9999) {
+										$_.RTT = [math]::max($min_of_AVGs, $_.RTT + ($min_of_AVGs - $AVG_of_last_RTTs[$_.group_id]))
+									}
+									#----------------------------------------------------------
+
 									# process packet
 									$msec_dif = [math]::abs(($_.sent_at - $bucket_time).TotalMilliseconds)
 									write-verbose ("$_" -replace 'PSComputerName.*')
@@ -1682,14 +1947,18 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 											$ok_pings = [array]($bucket | ?{$_.Status -eq 'Success'})
 											if ($ok_pings) {$ok_pings = $ok_pings.length} else {$ok_pings=0}
 											$ping_count += 1
+											
+											$RTT = (($bucket).RTT | measure -Minimum).minimum
+
 											$output = [PSCustomObject]@{`
 												sent_at = (($bucket).sent_at | measure -Minimum).minimum; `
 												Status = $bucket_status; `
-												RTT = (($bucket).RTT | measure -Minimum).minimum; `
+												RTT = $RTT; `
 												ping_count = $ping_count; `
-												destination = ($bucket.target) -join ";"; `
 												bucket_pings = $bucket.length; `
 												bucket_ok_pings = $ok_pings; `
+												min_of_AVGs = $min_of_AVGs; `
+												destination = ($bucket.target) -join ";"; `
 												debug = ($bucket.debug) -join ""
 											}
 											$ping_count += 1
@@ -1726,9 +1995,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 									Status = $_.status; `
 									RTT = $_.RTT; `
 									ping_count = $_.ping_count; `
-									destination = $_.target; `
 									bucket_pings = 1; `
 									bucket_ok_pings = $ok_pings; `
+									min_of_AVGs = $min_of_AVGs; `
+									destination = $_.target; `
 									debug = ""
 								}
 								echo $output
@@ -1737,7 +2007,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 					}
 				}
 			}
-		} | Format-PingTimes `
+		} `
+		 | Format-PingTimes `
 			-Target $Target `
 			-PingsPerSec $PingsPerSec `
 			-UpdateScreenEvery $UpdateScreenEvery `
@@ -1749,7 +2020,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 			-DebugMode $DebugMode `
 			-BarGraphSamples $BarGraphSamples `
 			-HighResFont $script:HighResFont
-			#>	
+
+		#>
     }
     finally { # when done
         # AFTER A CTRL-C
@@ -1771,6 +2043,63 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings."
         }
     }
+}
+
+function helper_find_pingable_com_host() {
+	# discovers pingable IPs and prints a list of them with RTTs in the lower first quartile 
+	
+	[char[]]' abcdefghijklmnopqrstuvwxyz' | %{
+		$c1=$_
+		[char[]]'abcdefghijklmnopqrstuvwxyz' | %{
+			$c2=$_
+			[char[]]'abcdefghijklmnopqrstuvwxyz' | %{
+				$c3=$_
+				$h="$c1$c2$c3.com".trim()
+				Start-ThreadJob -ThrottleLimit 100 -ArgumentList $h -ScriptBlock {
+					ping -n 1 $args[0]
+				}
+			}
+		} 
+	}
+	
+	$RTTs = @{}
+	$low_RTT_IPs = @{}
+	
+	sleep 5
+	while (($RTTs.count -lt (120*8)) -and (get-job  -State 'completed')) {
+		sleep 10
+		get-job  -State 'completed' | %{
+			$out=(Receive-Job -id $_.id)
+			if (!($out -like 'Ping statistics for 127.*') -and ($out -like '*Received = 1*') -and ($out -like '*Minimum*')) {
+				$ip = ($out | sls 'Pinging').line -replace '^.*\[' -replace '].*'
+				$RTT = [int](($out | sls Minimum).line -replace '^.*= ' -replace 'ms')
+				$RTTs[$ip] = $RTT
+				#echo $ip
+			}
+			remove-job -id $_.id
+		}
+		# 25% percentile of RTTs
+		$RTT_p25 = ($RTTs.Values | sort | select -First ([int]($RTTs.count/4)) | select -last 1)
+
+		$low_RTT_IPs = ($RTTs.keys | ? {$RTTs[$_] -lt $avg_RTT})
+		echo "Found $($RTTs.keys.count) IPs, 1/4 of them have RTT <= $RTT_p25 ms"
+	}
+	
+	get-job | Remove-Job -force
+	
+	$line=''; $cnt=0; 
+	$RTTs.keys | ? {$RTTs[$_] -le $RTT_p25} | %{
+		[PSCustomObject]@{ ip = $_; RTT = $RTTs[$_] }
+	} | sort -Property RTT | %{
+		$ip = $_.ip
+		$line +=  "'$ip',"
+		$cnt+=1
+		if ($cnt % 8 -eq 0) {
+			$line = "@($line)" -replace ',\)','),'
+			echo "$line"
+			$line=''
+		}
+	}
 }
 
 if (!(Get-Module ThreadJob -list)) {
