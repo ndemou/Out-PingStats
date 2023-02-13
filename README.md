@@ -120,7 +120,8 @@ I should confess though, that **the selection of the 95th percentile is rather a
 
 If your terminal font contains unicode block characters (like these: ▁▂▃▄▅▆▇█)
 then you can add the `-HighResFont $true` option to get
- preatier and more detailed graphs. 
+ preatier and more detailed graphs. If you try the option and you get characters like these: ![image](https://user-images.githubusercontent.com/4411400/218545287-b2d6482d-50d6-47d2-a058-c67f5f07ff38.png)
+then the font of your terminal is not containing unicode block characters.
 Paste the above characters to your terminal to check.
 "Courier" and "Consolas" do not include them, "DejaVu sans mono" does.
 
