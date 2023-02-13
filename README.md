@@ -129,9 +129,13 @@ the code will *try* to detect the font and decide whether to use the unicode blo
 It will display this warning if it thinks it can not.
 ![image](https://user-images.githubusercontent.com/4411400/208317605-721dafc4-06fb-4dd1-86ae-5c264fe08a0d.png)
 
-If you are seeing low-resolution graphs, you can download the free and very nice "DejaVu sans mono" font,
-install it by double-clicking on the ttf file and clicking install, 
-and then configure your PowerShell terminal to use it.
+If you are seeing low-resolution graphs the quick solution is this:
+   1. [download the zip file for the free "DejaVu sans mono" font](https://dejavu-fonts.github.io/Download.html).
+   1. Open the zip file.
+   1. Double-click the file `DejaVuSansMono.ttf`  (inside the `ttf` folder).
+   1. Click install.
+   1. [Configure your PowerShell terminal](https://www.get-itsolutions.com/windows-terminal-change-font/) to use the newly installed font.
+   1. Add the `-HighResFont $true` argument if you still don't get nice bars.
 
 ### Other features
 
