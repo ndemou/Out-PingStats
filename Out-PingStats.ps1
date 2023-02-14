@@ -1,5 +1,5 @@
 <#
-    v0.19.5
+    v0.20.0
 
 TODO: A function to install DejaVuSans Mono
       Download 
@@ -563,6 +563,9 @@ Function Start-MultiDnsQueries {
             $last_RTTs[$target].enqueue($Real_RTT)
             if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
             $Median_of_last_RTTs[$target] = get_median $last_RTTs[$target]
+            # the following line will force get_baseline to always recalculate 
+            # the baseline during the first cycle of pings 
+            if ($ping_count -le $target_list.count) {$Baseline = $null} 
             $Baseline = (get_baseline $Baseline $Median_of_last_RTTs.values)
         }
 
@@ -725,6 +728,9 @@ Function Start-MultiPings {
             $last_RTTs[$target].enqueue($real_RTT)
             if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
             $Median_of_last_RTTs[$target] = get_median $last_RTTs[$target]
+            # the following line will force get_baseline to always recalculate 
+            # the baseline during the first cycle of pings 
+            if ($ping_count -le $target_list.count) {$Baseline = $null} 
             $Baseline = (get_baseline $Baseline $Median_of_last_RTTs.values)
         }
 
@@ -1608,7 +1614,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $RTT_values.enqueue($ms)
             $RespondersCnt_values.enqueue($_.bucket_ok_pings)
             # ignore the first few pings (the sometimes bumpy start)
-            if (($RTT_values.count -eq 61) -and !$bumpy_start_cleanup_done) {
+            if (($RTT_values.count -eq 21) -and !$bumpy_start_cleanup_done) {
                 $bumpy_start_cleanup_done = $true
                 $RTT_values.clear()
                 $RTT_values.enqueue($ms)
