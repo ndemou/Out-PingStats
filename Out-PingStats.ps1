@@ -1,16 +1,13 @@
 <#
-    v0.19.4
+    v0.19.5
 
-TODO: Install dejavusans mono
+TODO: A function to install DejaVuSans Mono
       Download 
         https://dejavu-fonts.github.io/Download.html
         http://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.zip
       Install 
         https://blog.simontimms.com/2021/06/11/installing-fonts/
-      (Changing the font that the console uses is harder
-      A nice clicky-clicky reference is this:
-        https://www.get-itsolutions.com/windows-terminal-change-font/
-      )
+      (Changing the font that the console uses is harder)
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
       (maybe show them next to the histogram)
@@ -450,7 +447,7 @@ Function Start-MultiDnsQueries {
             9999
         }
     }
-    function get_baseline($Baseline, $Median_of_last_RTTs){
+    function get_baseline($Baseline, $RTT_list){
         # see function notes on main code
         $old_Baseline = $Baseline
         $calculated_baseline_now = ($RTT_list | ?{$_ -ne 9999} | measure -Minimum).Minimum
@@ -636,7 +633,7 @@ Function Start-MultiPings {
             9999
         }
     }
-    function get_baseline($Baseline, $Median_of_last_RTTs){
+    function get_baseline($Baseline, $RTT_list){
         # see function notes on main code
         $old_Baseline = $Baseline
         $calculated_baseline_now = ($RTT_list | ?{$_ -ne 9999} | measure -Minimum).Minimum
