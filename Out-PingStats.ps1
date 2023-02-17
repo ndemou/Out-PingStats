@@ -1,5 +1,5 @@
 <#
-    v0.20.0
+    v0.20.2
 
 TODO: A function to install DejaVuSans Mono
       Download 
@@ -989,12 +989,12 @@ function stats_of_series($series){
 }
 function p95_of_jitter($RTT_values){
     # computes the 95th percentile of the jitter for the RTTs
+    # NOTE I CHOSE TO IGNORE LOST PACKETS
+    # (I could consider the jitter to also be 9999)
     write-verbose "RTTs = $($RTT_values -join ',')"
     $prev = $RTT_values | select -first 1
     $jitter = @($RTT_values | select -last ($RTT_values.count -1) | %{
-        if (($_ -eq 9999) -or ($prev -eq 9999)) {
-            echo 9999
-        } else {
+        if (($_ -ne 9999) -and ($prev -ne 9999)) {
             # /2 is a very rough approximation of oneway jitter.
             # (rough because I assume that half the jitter is from sending
             # the packet and half from receiving. That's not always true. E.g.
@@ -1504,7 +1504,6 @@ function append_to_pingtimes($ToSave_values, $file) {
         $line += [char]($_ + 34)
     }
     $line >> $file
-    $ToSave_values = @()
 }
 function Format-PingTimes {
 <#
@@ -1701,6 +1700,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             }
 
             append_to_pingtimes $ToSave_values $script:PINGREC_FILE
+            $ToSave_values = @()
 
             # signal that it is time to update the file with the current screen
             $save_screen_to_file = $true
