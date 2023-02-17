@@ -12,7 +12,7 @@ leaving your PowerShell terminal 🙂
 
 #### You want to evaluate the quality of a connection for minutes or hours 
 
-Out-PingStats can easily and **nicely** display a few hours worth of data in one screen.
+Out-PingStats can easily and **nicely** display a few hours worth of data in one screen. It also records every single RTT in a `.pingrec` file saved in your %TEMP% folder.
 
 #### You want to evaluate the uplink quality of a large network
 
@@ -152,8 +152,8 @@ you only have to `cat` this file.
 Out-PingStats also records every RTT time measured to a text file named 
 `ops.<START-TIME>.pingrec` in your %TEMP% folder. The file has one line per 
 minute starting with the timestamp `hhmm:`. After the timestamp follows one
-character per measurement. The character is `[char]($RTT+34)` 
-(e.g. `A` for 31msec, `B` for 32msec, etc)
+character per measurement. The character is `[char]($RTT+34)`
+(e.g. `A` for 31msec, `B` for 32msec, etc). For lost pings you get an `!` instead.
 
 ### Histogram examples
 
