@@ -248,5 +248,4 @@ parallel DNS queries we mostly suppress such sporadic spikes.
 
 ## Note for non European users
 
-There's a list of IPs that are Europe centric in the code. Not all of them but many. 
-You may wish to change them to match your continent.
+There's a list of IPs that are Europe centric in the code. You can create a nice list suited for your country by dot sourcing this program and running the helper function `helper_find_pingable_com_host` (it needs a few minutes to spit out the list). Check at the top of the code the declaration of `$PING_TARGET_LIST = ` and replace the value with the list you got.
