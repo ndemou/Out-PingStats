@@ -1,6 +1,61 @@
 <#
-    v0.21.0
+    v0.22.3
 
+##########################################
+# Quick way to test with vanila pings    #
+##########################################
+#-------------------------------------------------------------------------------------------------------------------------------------------------------
+$hosts = @('cbv.com','bwv.com','aje.com','aok.com','bvs.com','bsw.com','aue.com','akc.com','arq.com','ceb.com','cbs.com','alc.com','cfv.com','hi.com')
+$hosts | %{
+  Start-ThreadJob -ThrottleLimit 400 -ArgumentList $_ -ScriptBlock {
+    $hostn = $args[0]
+    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
+}}; while ($true) {get-job | receive-job; sleep 1}
+
+
+$hosts = @('10.2.11.10','10.13.255.48','185.3.220.2','62.169.224.62','z1.z1.vpbx.gr')
+$hosts | %{
+  Start-ThreadJob -ThrottleLimit 40 -ArgumentList $_ -ScriptBlock {
+    $hostn = $args[0]
+    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
+}}; while ($true) {get-job | receive-job; sleep 1}
+#-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+TODO: Maybe the way I ping hostnames like acx.com means I perform 
+      a DNS resolution for every ping
+TODO:
+     RTT VARIANCE(p95-min), per 2' for 300', min=0, max=206, last=17 (ms)
+ 300|_________________________________________________________________________________________
+    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
+   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
+              `^Internet`         `         `         `         `         `         `
+ 300|_________________________________________________________________________________________
+    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
+   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
+              `^ISP     `         `         `         `         `         `         `
+ 300|_________________________________________________________________________________________
+    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
+   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
+              `^LAN     `         `         `         `         `         `         `
+     LOSS%, per 2' for 300', min=0%, p95=23.33%, max=25.83%, last=0.833%
+  30|______▃_________▃_________▃____________________▃______________________________▅__________
+    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
+   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
+              `^Internet`         `         `         `         `         `         `
+  30|______▃_________▃_________▃____________________▃______________________________▅__________
+    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
+   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
+              `^ISP     `         `         `         `         `         `         `
+  30|______▃_________▃_________▃____________________▃______________________________▅__________
+    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
+   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
+              `^LAN     `         `         `         `         `         `         `
+     ONE-WAY JITTER, per 2' for 300', min=0, p95=33, max=92, last=8 (ms)
+  30|_____▂▲____________▂_______________________▲___▲________▲▲___█__▂_____________▆__________
+    |_▂__▁██▃__▆_▅___▅__█______▃_______▃_____█_▄█__▃█_▁__▅▂__██__▅█__█_▅▆_______▃__█__________
+   0|▃█▃▁████▅▁█▆█▅▂▂█▃_█▆▂▃▅▂▅█▅▆▆▁▆▃▂█▇▅█▄▆█▇██▃███▆█▆▃██▂███▆▆██_▄█▂██▄▄▆▄▂▅▂█▃▁█▂▃▄▅▃▂▆▁▆▆
+              `ISP      `         `         `         `         `         `         `
+              
 TODO: Hide histogram if console height is not enough
 TODO: Print clock time every 10 or 20 vertical bars
       i.e. '22:26 instead of just ` (yes ' is better than `)
@@ -14,7 +69,7 @@ TODO: A function to install DejaVuSans Mono
 TODO: Add argument to change folder where I save files (default=$env:temp)
 TODO: Collect failures per target and display the top 3 or so failed%
       (maybe show them next to the histogram)
-TODO: In Histogram show the actual values instead of min... and ...MAX
+TODO: In Histogram show the actual max instead of ...MAX
 TODO: When multiple scripts run simultaneously sync Y-max for all graphs
       if any of them was run with -SyncYAxis
 TODO: Option to read input from saved file
@@ -25,7 +80,7 @@ TODO: While we collect enough data points to have a decent histogram
       we do present the histogram. After that point we change visualization:
       Now every block that used to show the histogram has a color that
       represents how likely it was for the actual histogram to be reaching
- 	  just at this block.
+      just at this block.
       (Use color scales A) or B) from
       http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
 TODO: https://learn.microsoft.com/en-us/powershell/scripting/dev-cross-plat/performance/script-authoring-considerations?view=powershell-7.3
@@ -104,29 +159,17 @@ $DNS_TARGET_LIST = @(`
     @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
 )
 
-
-
 $PING_TARGET_LIST = @(`
-    @('acx.com','tt.com','xx.com','il.com','pp.com','bus.com','wo.com','agr.com'),
-    @('cec.com','yv.com','al.com','acn.com','hc.com','zf.com','aks.com','um.com'),
-    @('ale.com','gf.com','apn.com','bwt.com','alr.com','bvr.com','vp.com','ccn.com'),
-    @('uq.com','dx.com','vi.com','amq.com','amw.com','bc.com','bqh.com','ali.com'),
-    @('ait.com','ccs.com','bdu.com','atm.com','bwf.com','vq.com','bud.com','nl.com'),
-    @('agv.com','jw.com','bpd.com','bxg.com','aij.com','xs.com','bon.com','ccu.com'),
-    @('byn.com','dq.com','abe.com','btr.com','bvk.com','bi.com','ei.com','afw.com'),
-    @('anc.com','ach.com','ake.com','atz.com','ha.com','cfu.com','qk.com','afi.com'),
-    @('aas.com','apf.com','akl.com','oy.com','cdl.com','aqs.com','alm.com','cgv.com'),
-    @('bsw.com','bkt.com','cch.com','afn.com','aho.com','abd.com','bnq.com','dz.com'),
-    @('bvs.com','cm.com','md.com','ani.com','btq.com','ads.com','ccm.com','aip.com'),
-    @('adu.com','aau.com','eb.com','alj.com','ao.com','afg.com','ef.com','aex.com'),
-    @('akc.com','av.com','amf.com','akk.com','tu.com','acz.com','bom.com','rv.com'),
-    @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com'),
-    @('bwv.com','cbm.com','bny.com','wy.com','lg.com','abl.com','ry.com','kw.com'),
-    @('cbv.com','bqs.com','pq.com','apr.com','tn.com','btc.com','abt.com','zb.com'),
-    @('aje.com','aae.com','bts.com','cgr.com','arv.com','cdg.com','zl.com','atl.com'),
-    @('aok.com','ci.com','anf.com','amh.com','byl.com','aaw.com','vw.com','car.com'),
-    @('wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','bop.com'),
-    @('arq.com','px.com','agt.com','bum.com','awl.com','bwh.com','ej.com','xi.com'),
+    @('bvs.com','cm.com','md.com','ani.com','btq.com','ads.com','ccm.com','aip.com','cbv.com','bqs.com','pq.com','apr.com','tn.com','btc.com','abt.com','zb.com'),
+    @('adu.com','aau.com','eb.com','alj.com','ao.com','afg.com','ef.com','aex.com','aje.com','aae.com','bts.com','cgr.com','arv.com','cdg.com','zl.com','atl.com'),
+    @('akc.com','av.com','amf.com','akk.com','tu.com','acz.com','bom.com','rv.com','aok.com','ci.com','anf.com','amh.com','byl.com','aaw.com','vw.com','car.com'),
+    @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com','wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','bop.com'),
+    @('bwv.com','cbm.com','bny.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bwh.com','ej.com','xi.com')
+)
+<#
+
+  Some pingable Hosts 
+  --------------------------------
     @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com'),
     @('hi.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
     @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com'),
@@ -138,131 +181,55 @@ $PING_TARGET_LIST = @(`
     @('cfv.com','avd.com','mj.com','qp.com','bxa.com','ajl.com','bzz.com','bjj.com'),
     @('alc.com','apg.com','cd.com','apl.com','bps.com','cgd.com','agh.com','and.com'),
     @('bwn.com','ov.com','jy.com','bv.com','jm.com','bo.com','si.com','bru.com'),
+    @('pge.com','lgs.com','qeb.com','qka.com','cjw3301.github.io','pvk.com','qad.com','qki.com'),
+    @('nt.com','ccc.com','abn.com','apd.com','cag.com','bvm.com','zg.com','gq.com'),
     @('og.com','ib.com','ahj.com','bvh.com','qz.com','wv.com','bg.com','bae.com'),
-    @('nt.com','ccc.com','abn.com','apd.com','cag.com','bvm.com','zg.com','gq.com')
-)
-<#
-  Pingable hosts: https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
+    @('gpv.com','qes.com','pfl.com','nso.com','jsv.com','nmb.com','ixl.com','pff.com'),
+    @('qdt.com','hex.com','phi.com','nns.com','hox.com','kdp.com','inj.com','qew.com'),
+    @('lge.com','mdp.com','mfg.com','hvq.com','due.com','pva.com','joc.com','qhu.com'),
+    @('nkd.com','par.com','dji.com','pbx.com','max.com','obn.com','qhs.com','gsk.com'),
+    @('psl.com','mlb.com','phd.com','qcy.com','pcl.com','ctx.com','qil.com','mfm.com'),
+    @('gcn.com','pia.com','kds.com','puj.com','pgt.com','csg.com','hio.com','nts.com'),
+    @('aas.com','apf.com','akl.com','oy.com','cdl.com','aqs.com','alm.com','cgv.com' ),
+    @('pkw.com','jog.com','ign.com','pop.com','qkc.com','pkd.com','mni.com','gfh.com'),
+    @('acx.com','tt.com','xx.com','il.com','pp.com','bus.com','wo.com','agr.com'     ), 
+    @('cec.com','yv.com','al.com','acn.com','hc.com','zf.com','aks.com','um.com'     ), 
+    @('ale.com','gf.com','apn.com','bwt.com','alr.com','bvr.com','vp.com','ccn.com'  ), 
+    @('uq.com','dx.com','vi.com','amq.com','amw.com','bc.com','bqh.com','ali.com'    ), 
+    @('ait.com','ccs.com','bdu.com','atm.com','bwf.com','vq.com','bud.com','nl.com'  ), 
+    @('agv.com','jw.com','bpd.com','bxg.com','aij.com','xs.com','bon.com','ccu.com'  ), 
+    @('byn.com','dq.com','abe.com','btr.com','bvk.com','bi.com','ei.com','afw.com'   ), 
+    @('anc.com','ach.com','ake.com','atz.com','ha.com','cfu.com','qk.com','afi.com'  ), 
+    @('bsw.com','bkt.com','cch.com','afn.com','aho.com','abd.com','bnq.com','dz.com' ), 
+    @('qat.com','mod.com','djx.com','doc.com','psc.com','kiq.com','ilm.com','pzf.com')
+
+  Hosts near my test VDSL line
+  --------------------------------
+    @('10.13.255.48','10.13.255.50','10.13.255.61','10.13.255.63','10.13.255.64','10.13.255.93','10.13.255.105','10.13.255.185'),
+    @('185.3.220.2','185.3.220.3','185.3.220.7','185.3.220.32','185.3.220.40','185.3.220.65','185.3.220.87','185.3.220.92'),
+    @('185.3.220.107','185.3.220.111','185.3.220.153','185.3.220.190','185.3.220.201','185.3.220.192','62.169.224.37','62.169.224.51'),
+    @('62.169.224.55','62.169.224.62','62.169.224.63','62.169.224.67','62.169.224.93','62.169.224.102','62.169.224.104','62.169.224.106'),
+    @('62.169.224.107','62.169.224.118','62.169.224.119','62.169.224.128','62.169.224.146','62.169.224.149','62.169.224.159','62.169.224.161'),
+    @('62.169.224.160','62.169.224.175','62.169.224.176','62.169.224.177','62.169.224.179','62.169.224.196','62.169.224.193','62.169.224.200')
+
+
+  Well known DNS servers
+  ---------------------------
+    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4',        '208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'),
+    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ,'185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
+    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ,'216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
+    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ,'216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
+    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
 
   BAD DNS servers
   ---------------
   '84.200.70.40','91.239.100.100', '89.233.43.71'
 
-  ALL ??.COM HOSTS THAT RESPOND TO PING (?=some letter)
-  -----------------------------------------------------
+  Pingable hosts 
+  ---------------
+  https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
 
-    # in groups of 10
-    'aa.com','ad.com','ae.com','af.com','ai.com','aj.com','ak.com','am.com','ao.com','ap.com',
-    'aq.com','as.com','au.com','av.com','bb.com','bc.com','be.com','bf.com','bg.com','bi.com',
-    'bk.com','bl.com','bo.com','bq.com','bv.com','bw.com','bx.com','bz.com','cb.com','cd.com',
-    'ce.com','cg.com','ci.com','cj.com','ck.com','cl.com','cm.com','co.com','cs.com','cu.com',
-    'cv.com','cw.com','dc.com','dh.com','dl.com','dn.com','dr.com','ds.com','dt.com','dv.com',
-    'dw.com','dx.com','dz.com','ea.com','eb.com','ed.com','ef.com','ei.com','ej.com','ek.com',
-    'el.com','er.com','es.com','ev.com','ew.com','ey.com','ez.com','fa.com','fb.com','fc.com',
-    'fd.com','fe.com','fj.com','fn.com','fp.com','fs.com','ft.com','ga.com','gd.com','ge.com',
-    'gf.com','gg.com','gl.com','go.com','gq.com','gr.com','gs.com','gu.com','gv.com','gw.com',
-    'gx.com','gz.com','ha.com','hb.com','hc.com','he.com','hf.com','hi.com','hm.com','hq.com',
-    'hr.com','ht.com','hv.com','ib.com','id.com','ie.com','ii.com','il.com','in.com','ip.com',
-    'iq.com','ir.com','is.com','it.com','iv.com','jb.com','jd.com','jk.com','jl.com','jm.com',
-    'jn.com','jp.com','js.com','jw.com','jy.com','ka.com','kc.com','kd.com','ke.com','kh.com',
-    'kj.com','kk.com','kn.com','ks.com','ku.com','kw.com','ky.com','la.com','ld.com','le.com',
-    'li.com','lj.com','lk.com','ln.com','lo.com','lp.com','lr.com','lu.com','lx.com','ly.com',
-    'ma.com','md.com','mg.com','mj.com','mn.com','mp.com','ms.com','mt.com','mu.com','mx.com',
-    'my.com','mz.com','na.com','nd.com','ne.com','nl.com','nn.com','no.com','np.com','nt.com',
-    'nw.com','oa.com','oc.com','oe.com','oj.com','ok.com','ol.com','om.com','on.com','oo.com',
-    'op.com','or.com','ov.com','oy.com','oz.com','pd.com','pi.com','pn.com','pp.com','pq.com',
-    'pt.com','pu.com','pv.com','py.com','qa.com','qb.com','qd.com','qf.com','qh.com','qj.com',
-    'qk.com','qm.com','qn.com','qo.com','qp.com','qq.com','qw.com','qy.com','qz.com','ra.com',
-    'rc.com','rh.com','ri.com','rj.com','rk.com','rl.com','ro.com','rv.com','ry.com','rz.com',
-    'sc.com','sh.com','si.com','sk.com','sl.com','sm.com','sn.com','so.com','sq.com','ss.com',
-    'sy.com','td.com','tf.com','th.com','tk.com','tn.com','to.com','tp.com','tr.com','ts.com',
-    'tt.com','tu.com','tw.com','tx.com','uc.com','ud.com','ui.com','uj.com','um.com','un.com',
-    'up.com','uq.com','ut.com','ux.com','vb.com','vh.com','vi.com','vk.com','vl.com','vn.com',
-    'vp.com','vq.com','vs.com','vu.com','vv.com','vw.com','vx.com','vy.com','vz.com','wg.com',
-    'wk.com','wl.com','wm.com','wo.com','wp.com','wq.com','ws.com','wt.com','wv.com','ww.com',
-    'wz.com','xa.com','xb.com','xd.com','xe.com','xf.com','xh.com','xi.com','xk.com','xl.com',
-    'xm.com','xp.com','xq.com','xr.com','xs.com','xv.com','xx.com','xy.com','yc.com','yd.com',
-    'ye.com','yf.com','yg.com','yo.com','yw.com','yy.com','zb.com','zf.com','zg.com','zj.com',
-    'zl.com','zn.com','zo.com','zv.com','zw.com','zy.com',
 
-    # In groups of 4
-    'aa.com','ad.com','ae.com','af.com',
-    'ai.com','aj.com','ak.com','am.com',
-    'ao.com','ap.com','aq.com','as.com',
-    'au.com','av.com','bb.com','bc.com',
-    'be.com','bf.com','bg.com','bi.com',
-    'bk.com','bl.com','bo.com','bq.com',
-    'bv.com','bw.com','bx.com','bz.com',
-    'cb.com','cd.com','ce.com','cg.com',
-    'cs.com','ct.com','cu.com','cv.com',
-    'cw.com','dc.com','dh.com','dl.com',
-    'dn.com','dq.com','dr.com','ds.com',
-    'dt.com','dv.com','dw.com','dx.com',
-    'dz.com','ea.com','eb.com','ed.com',
-    'ef.com','ei.com','ej.com','ek.com',
-    'el.com','er.com','es.com','ev.com',
-    'ew.com','ey.com','ez.com','fa.com',
-    'fb.com','fc.com','fd.com','fe.com',
-    'fj.com','fn.com','fp.com','fs.com',
-    'ft.com','ga.com','gd.com','ge.com',
-    'gf.com','gg.com','gl.com','go.com',
-    'gq.com','gs.com','gu.com','gv.com',
-    'gw.com','gz.com','ha.com','hb.com',
-    'hc.com','he.com','hi.com','hl.com',
-    'hm.com','hq.com','hr.com','ht.com',
-    'hv.com','ib.com','id.com','ih.com',
-    'ii.com','il.com','in.com','ip.com',
-    'iq.com','ir.com','is.com','it.com',
-    'iv.com','jb.com','jd.com','jk.com',
-    'jl.com','jn.com','jp.com','js.com',
-    'jw.com','jy.com','ka.com','kc.com',
-    'kd.com','ke.com','kh.com','kk.com',
-    'kn.com','ks.com','ku.com','kw.com',
-    'la.com','ld.com','le.com','li.com',
-    'lj.com','lk.com','ln.com','lo.com',
-    'lp.com','lr.com','lt.com','lu.com',
-    'lx.com','ly.com','lz.com','ma.com',
-    'md.com','mg.com','mj.com','mn.com',
-    'mp.com','ms.com','mt.com','mu.com',
-    'my.com','mz.com','na.com','nd.com',
-    'ne.com','nn.com','no.com','np.com',
-    'nt.com','nw.com','oa.com','oc.com',
-    'oe.com','oj.com','ok.com','ol.com',
-    'om.com','on.com','oo.com','op.com',
-    'or.com','ov.com','oy.com','oz.com',
-    'pd.com','pi.com','pn.com','pp.com',
-    'pq.com','pt.com','pv.com','px.com',
-    'py.com','qa.com','qb.com','qd.com',
-    'qf.com','qh.com','qj.com','qk.com',
-    'qm.com','qn.com','qo.com','qp.com',
-    'qq.com','qw.com','qx.com','qz.com',
-    'ra.com','rc.com','rh.com','ri.com',
-    'rj.com','rk.com','rl.com','rn.com',
-    'ro.com','rv.com','rx.com','ry.com',
-    'rz.com','sc.com','sh.com','si.com',
-    'sk.com','sl.com','sm.com','sn.com',
-    'so.com','sq.com','sy.com','td.com',
-    'tf.com','th.com','tk.com','tn.com',
-    'to.com','tp.com','tr.com','ts.com',
-    'tt.com','tu.com','tw.com','tx.com',
-    'ua.com','uc.com','ud.com','ui.com',
-    'uj.com','um.com','un.com','up.com',
-    'uq.com','ut.com','ux.com','uz.com',
-    'vb.com','vh.com','vi.com','vl.com',
-    'vn.com','vp.com','vq.com','vs.com',
-    'vu.com','vv.com','vw.com','vx.com',
-    'vy.com','vz.com','wg.com','wk.com',
-    'wl.com','wm.com','wn.com','wo.com',
-    'wp.com','wq.com','ws.com','wv.com',
-    'ww.com','wy.com','wz.com','xa.com',
-    'xb.com','xd.com','xe.com','xf.com',
-    'xh.com','xk.com','xm.com','xp.com',
-    'xq.com','xr.com','xs.com','xv.com',
-    'xx.com','xy.com','yb.com','yc.com',
-    'yd.com','ye.com','yf.com','yg.com',
-    'yo.com','yw.com','yy.com','zb.com',
-    'ze.com','zf.com','zg.com','zi.com',
-    'zj.com','zl.com','zn.com','zo.com',
 #>
 
 # Re: colored printing
@@ -878,6 +845,7 @@ function std_num_le($x) {
     # 1,2,5, 10,20,50, 100,200,500, 1000,2000,5000, ...
     $power = [math]::floor([math]::log($x + 1, 10))
     $candidate = [math]::pow(10, $power)
+    if ($candidate -gt $x) {$candidate = $candidate / 10}
     if ($candidate*5 -le $x) {$candidate = $candidate * 5}
     if ($candidate*2 -le $x) {$candidate = $candidate * 2}
     $candidate
@@ -1213,8 +1181,17 @@ function render_histogram($y_values) {
         $perc_cumul = [Math]::min(100, [Math]::Round($perc_cumul + $percent,1))
         $max_perc = [Math]::max($max_perc, $percent)
 
-        if ($i -eq 0) {$from_str="min"; $cumul_str=" Cumul"} else {$from_str="{0,3}" -f $from; $cumul_str=" {0,3}% " -f $perc_cumul}
-        if ($i -eq ($HistBucketsCount - 1)) {$to_str="MAX"} else {$to_str="{0,3}" -f $to}
+        if ($i -eq 0) {
+            $from_str="{0,3}" -f $y_min 
+            $cumul_str=" Cumul"
+        } else {
+            $from_str="{0,3}" -f $from; $cumul_str=" {0,3}% " -f $perc_cumul
+        }
+        if ($i -eq ($HistBucketsCount - 1)) {
+            $to_str="MAX"
+        } else {
+            $to_str="{0,3}" -f $to
+        }
         $bars = (percent_to_bar $percent  $Chars_for_100perc)
         $spaces = 28-($bars.length)
         $spaces = " " * [math]::max(0,$spaces)
@@ -1381,7 +1358,7 @@ function render_bar_graph($y_values, $title="", $options="", $special_value, $de
     echo "${COL_TITLE}$(" " * ($width)) $ticks${COL_RST}"
     # echo "Oldest-> $y_values"
 }
-function render_slow_updating_graphs() {
+function render_slow_updating_graphs($ShowCountOfResponders) {
     # describe the sampling period and the total time we collect samples
     # e.g. per 2' for 14'
     $AggPeriodDescr = "per $([math]::round($AggregationSeconds/60,1))' "+`
@@ -1389,6 +1366,21 @@ function render_slow_updating_graphs() {
 
     # X axis limits
     $MaxItems = $Host.UI.RawUI.WindowSize.Width - 6
+
+    # display $SlowResponders_values
+    #------------------------------
+    if ($ShowCountOfResponders) {
+        $values = @($SlowResponders_values | select -last $MaxItems)
+        $stats = (stats_of_series $values)
+        if ($GraphMin -ne -1) {$y_min = $GraphMin} else {
+            $y_min = (std_num_le $stats.min)
+            if ($y_min -lt 10) {$y_min = 0}
+        }
+        if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = (y_axis_max $stats.min $stats.max $y_min 9)}
+        $title = "%TIME with LOW RESPONDERS,  $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
+        render_bar_graph $values $title "<stats><H_grid>" 9999 `
+            0 30 $JITTER_BAR_GRAPH_THEME
+    }
 
     # display $Baseline_values
     #------------------------------
@@ -1463,7 +1455,15 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
 
     $y_min = (std_num_le $stats.min)
     if ($y_min -lt 10) {$y_min = 0}
-    $y_max = (y_axis_max $stats.min $stats.max $y_min 9)
+    $max_to_show = $stats.p95
+    if ($stats.max -gt $stats.p95*3) {
+        $max_to_show = $stats.p95 * 3
+    } elseif (($stats.max -gt $stats.p95) -and ($stats.max -le $stats.p95*2)) {
+        $max_to_show = $stats.p95 * 2
+    } else {
+        $max_to_show = $stats.p95 
+    }
+    $y_max = (y_axis_max $stats.min $max_to_show $y_min 9)
     if ($GraphMin -ne -1) {$y_min = $GraphMin}
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
     render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
@@ -1472,12 +1472,12 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         # display the RespondersCnt bar graph
         $graph_values =  @($RespondersCnt_values | select -last $script:EffBarsThatFit)
         #echo ([string][char]9472*75)
-        $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>"
+        $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>, All time min=$All_min_Responders"
         # decide Y axis limits
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-        $y_max = (y_axis_max $stats.min $stats.max 0 9)
-        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 39  $JITTER_BAR_GRAPH_THEME
+        $y_max = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
+        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 $y_max  $JITTER_BAR_GRAPH_THEME
     }
 
     # display the histogram
@@ -1486,11 +1486,11 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         echo "    ${COL_TITLE}RTT HISTOGRAM, last $HistSamples samples, p95=${COL_H1}${p95}${COL_TITLE}ms$COL_RST"
         render_histogram @($RTT_values | select -last $HistSamples)
         $p95 = [int](stats_of_series $RTT_values).p95
-        echo ""
+        #echo ""
     }
 
     if ($Variance_values.count) {
-        render_slow_updating_graphs
+        render_slow_updating_graphs $ShowCountOfResponders
         if (Test-Path variable:script:SCREEN_DUMP_FILE) {
             $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
             echo "$COL_IMP_LOW     (Saving to $filename)"
@@ -1580,9 +1580,12 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
         $RTT_values = New-Object System.Collections.Queue
         $RespondersCnt_values = New-Object System.Collections.Queue
+        $All_min_Responders = $null
+        $All_max_Responders = $null
         $ToSave_values = @()
         $Variance_values = New-Object System.Collections.Queue
         $Baseline_values = New-Object System.Collections.Queue
+        $SlowResponders_values = New-Object System.Collections.Queue
         $Jitter_values = New-Object System.Collections.Queue
         $Loss_values = New-Object System.Collections.Queue
 
@@ -1629,6 +1632,19 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             #-----------------------------
             $RTT_values.enqueue($ms)
             $RespondersCnt_values.enqueue($_.bucket_ok_pings)
+            if ($RTT_values.count -eq 30) {
+                # Initialise all time min/max at whatever value we have
+                # at the 30th ping
+                $All_min_Responders = $_.bucket_ok_pings
+                $All_max_Responders = $_.bucket_ok_pings
+            } elseif ($RTT_values.count -gt 30) {
+                if ($_.bucket_ok_pings -lt $All_min_Responders) {
+                    $All_min_Responders = $_.bucket_ok_pings
+                }
+                if ($_.bucket_ok_pings -gt $All_max_Responders) {
+                    $All_max_Responders = $_.bucket_ok_pings
+                }
+            }
             # ignore the first few pings (the sometimes bumpy start)
             if (($RTT_values.count -eq 21) -and !$bumpy_start_cleanup_done) {
                 $bumpy_start_cleanup_done = $true
@@ -1685,6 +1701,19 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $last_hist_secs_values = @($RTT_values | select -Last ($AggregationSeconds * $PingsPerSec))
             $last_hist_secs_values_no_lost = @($RTT_values | ?{$_ -ne 9999} | select -Last ($AggregationSeconds * $PingsPerSec))
 
+            # populate the slow Responders graph
+            # How many times the number of responders was too low
+            # Too low = less than half of the all time maximum number of responders 
+            $values = @($RespondersCnt_values | `
+                select -Last ($AggregationSeconds * $PingsPerSec) )
+            $too_low_values = @($values | ?{$_ -lt $All_max_Responders/2})
+            if ($too_low_values) {
+                $SlowResponders_values.enqueue(
+                    [math]::round(100 * $too_low_values.count / $values.count,1))
+            } else {
+                $SlowResponders_values.enqueue(0)
+            }
+            
             # populate the 95 percentiles bar graph
             if ($last_hist_secs_values_no_lost) {
                 $stats = (stats_of_series $last_hist_secs_values_no_lost)
@@ -1851,10 +1880,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
             $DNS_TARGET_LIST | %{
                 $group_id = $_[0] + $_[1]
-                $last_RTTs[$group_id] = New-Object System.Collections.Queue
-                $last_RTTs[$group_id].enqueue(99)
-                $Median_of_last_RTTs[$group_id] = 0
-
                 $jobs += @((
                     Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiDnsQueries -ScriptBlock {
                         $PingsPerSec = $args[0]
@@ -1868,10 +1893,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             }
             $PING_TARGET_LIST | %{
                 $group_id = $_[0] + $_[1]
-                $last_RTTs[$group_id] = New-Object System.Collections.Queue
-                $last_RTTs[$group_id].enqueue(99)
-                $Median_of_last_RTTs[$group_id] = 0
-
                 $jobs +=  @((
                     Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiPings -ScriptBlock {
                             $PingsPerSec = $args[0]
@@ -1964,7 +1985,8 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                             write-verbose "<---bucket---"
                             write-verbose " "
 
-                            $data_sorted | %{
+                            $data_sorted | ?{$_} | %{
+                                write-verbose $_
                                 if ($_.status -eq 'Success' -and $last_success_at -lt $_.sent_at) {
                                     # if later I receive packets with sent_at before this
                                     # timestamp I will discard them (it is obviously a timeout
@@ -1979,8 +2001,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                                     #----------------------------------------------------------
                                     # "Normalize" the RTT reported by each group in order to bring
                                     # them close to a _common_ minimum
-                                    if (($last_RTTs[$_.group_id].count -eq 1) -and ($last_RTTs[$_.group_id].Peek() -eq 0)) {
-                                        $foo = $last_RTTs[$_.group_id].dequeue() # get rid of the initial dummy value
+                                    if (!($_.group_id -in $last_RTTs.keys)) {
+                                        write-verbose "$($_.group_id) not in `$last_RTTs.keys $($last_RTTs.keys)"
+                                        $last_RTTs[$_.group_id] = New-Object System.Collections.Queue
+                                        $Median_of_last_RTTs[$_.group_id] = $_.RTT
                                     }
                                     $last_RTTs[$_.group_id].enqueue($_.RTT)
                                     if ($last_RTTs[$_.group_id].count -gt $max_values_to_keep) {$foo = $last_RTTs[$_.group_id].dequeue()}
@@ -2107,49 +2131,51 @@ B) The destination host may drop some of your ICMP echo requests(pings)
     }
 }
 
-function helper_find_pingable_com_host() {
+function helper_find_pingable_com_host($CheckAfterHost='') {
     # discovers pingable IPs and prints a list of them with RTTs in the lower first quartile
     # it prints the IPs with lower RTTs first
     
     $HOSTS_TO_PING_IN_PARALLEL = 32
     $HOSTS_TO_PING_IN_SERIES = 8
-    $PERCENT_OF_RESPONDING_HOSTS = 0.40 # aproximation err to a lower percent
+    $PERCENT_OF_RESPONDING_HOSTS = 0.12 # aproximation err to a lower percent
 
     $Hosts_to_try = $HOSTS_TO_PING_IN_PARALLEL*$HOSTS_TO_PING_IN_SERIES*4/$PERCENT_OF_RESPONDING_HOSTS
     $hosts_count = 0
-    foreach ($char in [char[]]' abcdefghijklmnopqrstuvwxyz') {
+    foreach ($char in [char[]]'cdghijklmnopqrstuvwxyz') {
         $c1=$char
         foreach ($char in [char[]]'abcdefghijklmnopqrstuvwxyz') {
             $c2=$char
             foreach ($char in [char[]]' abcdefghijklmnopqrstuvwxyz') {
                 $c3=$char
                 $h="$c1$c2$c3.com".trim()
-                Start-ThreadJob -ThrottleLimit 100 -ArgumentList $h -ScriptBlock {
-                    ping -n 1 $args[0]
+                if ($h -gt $CheckAfterHost) {
+                    Start-ThreadJob -ThrottleLimit 100 -ArgumentList $h -ScriptBlock {
+                        ping -n 1 $args[0]
+                    }
+                    $hosts_count += 1
+                    if ($hosts_count -gt ($Hosts_to_try)) {break}
                 }
-                $hosts_count += 1
-                if ($hosts_count -gt ($Hosts_to_try)) {break}
             }
             if ($hosts_count -gt ($Hosts_to_try)) {break}
         }
         if ($hosts_count -gt ($Hosts_to_try)) {break}
     }
 
-    $RTTs = @{}
+    $HostRtt = @{}
     $low_RTT_IPs = @{}
 
     sleep 5
     $failed_hosts = 0
     $tried_hosts = 0
-    while (($RTTs.count -lt ($HOSTS_TO_PING_IN_PARALLEL*$HOSTS_TO_PING_IN_SERIES*4)) -and ((get-job  -State 'Running') -or (get-job  -State 'NotStarted'))) {
+    while (($HostRtt.count -lt ($HOSTS_TO_PING_IN_PARALLEL*$HOSTS_TO_PING_IN_SERIES*4)) -and ((get-job  -State 'Running') -or (get-job  -State 'NotStarted'))) {
         get-job  -State 'completed' | %{
             $out=(Receive-Job -id $_.id)
-            if (!($out -like 'Ping statistics for 127.*') -and ($out -like '*Received = 1*') -and ($out -like '*Minimum*')) {
-                $ip = ($out | sls 'Pinging').line -replace 'Pinging ' -replace ' .*'
+            if (!($out -like 'Ping statistics for 127.*') -and ($out -match 'Received = [^0]') -and ($out -like '*Minimum*')) {
+                $hostn = ($out | sls 'Pinging').line -replace 'Pinging ' -replace ' .*'
                 $real_ip = ($out | sls 'Pinging').line -replace '^.*\[' -replace '].*'
                 $RTT = [int](($out | sls Minimum).line -replace '^.*= ' -replace 'ms')
-                $RTTs[$ip] = $RTT
-                #echo $ip
+                $HostRtt[$real_ip] = @{hostn=$hostn; RTT=$RTT}
+                #echo $hostn
             } else {
                 $failed_hosts += 1
             }
@@ -2157,21 +2183,20 @@ function helper_find_pingable_com_host() {
             remove-job -id $_.id
         }
         # 25% percentile of RTTs
-        $RTT_p25 = ($RTTs.Values | sort | select -First ([int]($RTTs.count/4)) | select -last 1)
+        $RTT_p25 = ($HostRtt.Values | %{$_.RTT}  | sort | select -First ([int]($HostRtt.count/4)) | select -last 1)
 
-        $low_RTT_IPs = ($RTTs.keys | ? {$RTTs[$_] -lt $avg_RTT})
-        echo "Tried $tried_hosts, found $($RTTs.keys.count) hosts, failed $failed_hosts, 1/4 of the found hosts have RTT <= $RTT_p25 ms"
+        echo "Tried $tried_hosts, last was $hostn, $($HostRtt.keys.count)($([int](100*$HostRtt.keys.count/$tried_hosts))%) hosts responding, , , 1/4 of the found hosts have RTT <= $RTT_p25 ms"
         sleep 10
     }
+    echo "LAST HOST CHECKED: $hostn"
 
     get-job | Remove-Job -force
 
     $line=''; $cnt=0;
-    $RTTs.keys | ? {$RTTs[$_] -le $RTT_p25} | %{
-        [PSCustomObject]@{ ip = $_; RTT = $RTTs[$_] }
-    } | sort -Property RTT | %{
-        $ip = $_.ip
-        $line +=  "'$ip',"
+    $HostRtt.keys | ? {$HostRtt[$_].RTT -le $RTT_p25} | %{
+        [PSCustomObject]@{ hostn = $HostRtt[$_].hostn; RTT = $HostRtt[$_].RTT }
+    } | sort -Property RTT | %{$_.hostn} | %{
+        $line +=  "'$_',"
         $cnt+=1
         if ($cnt % 8 -eq 0) {
             $line = "@($line)" -replace ',\)','),'
@@ -2179,6 +2204,95 @@ function helper_find_pingable_com_host() {
             $line=''
         }
     }
+}
+
+function helper_find_pingable_close_hosts($min_hops=2, $max_hops=4) {
+    # discovers pingable IPs "close" to us 
+    # Close is defined as being from 2 to 4 hops 
+    # (these are the default limits) 
+
+    write-host "Please wait tracert'ing"
+    $out = (tracert -h 4 -d google.com)
+    $match = ($out  | sls "^ *[0-9].* ms ")
+    if (!($match)) {
+        Write-Error "ERROR: no results from tracert"
+        return
+    }
+    #PS> ($out  | sls "^ *[0-9].* ms ").line -replace '^ *| *$'
+    #1     4 ms     4 ms     2 ms  10.2.11.10
+    #2    20 ms     9 ms    10 ms  10.13.255.62
+    #3     8 ms     8 ms     9 ms  62.169.224.64
+    #4     8 ms     8 ms     8 ms  185.3.220.7
+    
+    $tracert_ips = (($out  | sls "^ *[0-9].* ms ").line -replace '^ *| *$' | %{
+        # each line of tracert output
+        $hop = [int]($_ -replace ' .*')
+        $ip = ($_ -replace '^.* ')
+        if (($hop -ge $min_hops) -and ($hop -le $max_hops)) {
+            write-host "next hop $ip"
+            echo $ip
+        }
+    })
+    
+    # build a list of /24 networks that we see in the next hops
+    $networks = ($tracert_ips | %{$_ -replace '[0-9]+$' } | sort -uniq)
+
+    # build a list of IPs we may try to ping 
+    # 254 IPs (1...254) per network (at most 4 networks)
+    $hosts_to_try = @()
+    $networks | select -first 4 | %{
+        $network = $_
+        1..254 | %{
+            $octet = $_
+            $hosts_to_try += @("$network$octet")
+        }
+    }
+    write-host "$($hosts_to_try.count) IPs to try"
+
+
+    $hosts_to_try | select -first 3 | %{
+        Start-ThreadJob -ThrottleLimit 50 -ArgumentList $_ -ScriptBlock {
+            ping -n 2 $args[0]
+        } > $null
+    }
+    $failed_hosts = 0
+    $tried_hosts = 0
+    $IPs = @()
+    while ((get-job  -State 'Running') -or (get-job  -State 'NotStarted')) {
+        get-job  -State 'completed' | %{
+            $out=(Receive-Job -id $_.id)
+            if (!($out -like 'Ping statistics for 127.*') -and ($out -match 'Received = [^0]')) {
+                $IP = ($out | sls 'Pinging').line -replace '^.*Pinging ' -replace ' with.*'
+                $IPs += @($IP)
+                # Write-host "Found responding host at $IP"
+            } else {
+                $failed_hosts += 1
+            }
+            $tried_hosts += 1
+            remove-job -id $_.id
+        }
+
+        if ($tried_hosts) {
+            write-host "Tried $tried_hosts, $($IPs.count) hosts responding ($([int](100*$IPs.count/$tried_hosts))%)"
+        }
+
+        $hosts_to_try | select -first 50 | %{
+            Start-ThreadJob -ThrottleLimit 50 -ArgumentList $_ -ScriptBlock {
+                ping -n 2 $args[0]
+            } > $null
+        }
+        $remain = [math]::max(0, ($hosts_to_try.count) - 50)
+        if ($remain) {
+            $hosts_to_try = ($hosts_to_try | select -last $remain)
+        } else {
+            $hosts_to_try = @()
+        }
+        sleep 5
+    }
+    
+    get-job | Remove-Job -force
+
+    return $IPs 
 }
 
 if (!(Get-Module ThreadJob -list)) {
