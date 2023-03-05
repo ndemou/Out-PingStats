@@ -2,8 +2,8 @@
 
 Out-PingStats displays nice, detailed and easy to understand graphs 
 that help you assess the short and long-term quality of your 
-uplink to the internet (or your connection to a specific host) 
-with a quick glance at the screen. Oh! and all that without 
+uplink to the internet or your connection to a specific host. 
+Oh! and all that without 
 leaving your PowerShell terminal 🙂
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
