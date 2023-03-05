@@ -23,16 +23,14 @@ Out-PingStats is immune to this problem.
 <details>
   <summary>More info</summary>
   
-  Out-PingStats pings 
-  more than a dozen different hosts in parallel and implements a smart
+  Out-PingStats pings about a dozen different hosts in parallel and implements a smart
   algorithm to combine the different response times in one meaningful value.
   If you see packet loss or the RTT jumping up then you know it's 
   because of a real problem in your uplink and not because google.com
   or whatever is throttling your pings.
 
   This is not a minor issue: 
-  I have, in many cases, seen packet loss of 3% to 5% 
-  and some times even more.
+  I have, in many cases, seen packet loss of 3% to 5% and some times even more.
   My assumption is that in a LAN with many devices
   there's greater chance that enough of them will happen to "hammer"
   the host you ping.
