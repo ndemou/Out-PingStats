@@ -1,9 +1,6 @@
 <#
     v0.22.5
 
-DONE 0.22.4 -GraphMax does not affect y_max of BASELNE slow graph
-DONE 0.22.5 Increased hosts per group after I show that 40% of the DNS hosts were consistently not responding
-
 ##########################################
 # Quick way to test with vanila pings    #
 ##########################################
