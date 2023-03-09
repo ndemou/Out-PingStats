@@ -1,5 +1,8 @@
 <#
-    v0.22.3
+    v0.22.5
+
+DONE 0.22.4 -GraphMax does not affect y_max of BASELNE slow graph
+DONE 0.22.5 Increased hosts per group after I show that 40% of the DNS hosts were consistently not responding
 
 ##########################################
 # Quick way to test with vanila pings    #
@@ -152,11 +155,9 @@ TODO: I could probably add a heatmap with 2 periods per character.
    and so on...
 #>
 $DNS_TARGET_LIST = @(`
-    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4',        '208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'),
-    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ,'185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
-    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ,'216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
-    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ,'216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
-    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
+    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'   , '8.8.4.4'     ,'208.67.222.222' , '208.67.220.220' , '4.2.2.2'    , '4.2.2.1'        ,'209.244.0.4',   '216.146.35.35', '216.146.36.36' , '209.244.0.3'   , '89.233.43.71'),
+    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26', '8.20.247.20' ,'185.225.168.168', '185.228.169.168', '76.76.19.19', '76.223.122.150' ,'216.146.35.35', '216.146.36.36', '91.239.100.100', '209.88.198.133', '195.46.39.39'),
+    @('176.103.130.130', '176.103.130.131', '64.6.64.6' , '64.6.65.6'   ,'216.87.84.211'  , '23.90.4.6'      , '77.88.8.8'  , '77.88.8.1'      ,'156.154.70.5',  '156.157.71.5',  '81.218.119.11' , '195.46.39.40'  ,  '74.82.42.42')
 )
 
 $PING_TARGET_LIST = @(`
@@ -164,18 +165,16 @@ $PING_TARGET_LIST = @(`
     @('adu.com','aau.com','eb.com','alj.com','ao.com','afg.com','ef.com','aex.com','aje.com','aae.com','bts.com','cgr.com','arv.com','cdg.com','zl.com','atl.com'),
     @('akc.com','av.com','amf.com','akk.com','tu.com','acz.com','bom.com','rv.com','aok.com','ci.com','anf.com','amh.com','byl.com','aaw.com','vw.com','car.com'),
     @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com','wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','bop.com'),
-    @('bwv.com','cbm.com','bny.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bwh.com','ej.com','xi.com')
+    @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com','hi.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
+    @('agl.com','uj.com','bwo.com','brc.com','mu.com','cg.com','cfk.com','kj.com','ceb.com','bwb.com','box.com','cdq.com','adk.com','bwz.com','cdp.com','ww.com'),
+	@('bwv.com','cbm.com','bny.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bwh.com','ej.com','xi.com')
 )
 <#
 
   Some pingable Hosts 
   --------------------------------
-    @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com'),
-    @('hi.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
-    @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com'),
-    @('arb.com','cby.com','abc.com','ev.com','boz.com','aqx.com','bgt.com','axp.com'),
-    @('agl.com','uj.com','bwo.com','brc.com','mu.com','cg.com','cfk.com','kj.com'),
-    @('ceb.com','bwb.com','box.com','cdq.com','adk.com','bwz.com','cdp.com','ww.com'),
+
+    @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com','arb.com','cby.com','abc.com','ev.com','boz.com','aqx.com','bgt.com','axp.com'),   
     @('es.com','bmg.com','ck.com','btx.com','cds.com','cgt.com','ft.com','cb.com'),
     @('cbs.com','pu.com','acc.com','cgg.com','byj.com','agu.com','qa.com','vy.com'),
     @('cfv.com','avd.com','mj.com','qp.com','bxa.com','ajl.com','bzz.com','bjj.com'),
@@ -1390,7 +1389,7 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
         $y_min = (std_num_le $stats.min)
         if ($y_min -lt 10) {$y_min = 0}
     }
-    if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = (y_axis_max $stats.min $stats.max $y_min 9)}
+    $y_max = (y_axis_max $stats.min $stats.max $y_min 9)
     $title = "RTT BASELINE(min),  $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     render_bar_graph $values $title "<stats><H_grid>" 9999 `
         $y_min $y_max $RTTMIN_BAR_GRAPH_THEME
