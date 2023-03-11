@@ -1,29 +1,16 @@
 <#
-    v0.22.5
+    v0.23.0
 
-##########################################
-# Quick way to test with vanila pings    #
-##########################################
-#-------------------------------------------------------------------------------------------------------------------------------------------------------
-$hosts = @('cbv.com','bwv.com','aje.com','aok.com','bvs.com','bsw.com','aue.com','akc.com','arq.com','ceb.com','cbs.com','alc.com','cfv.com','hi.com')
-$hosts | %{
-  Start-ThreadJob -ThrottleLimit 400 -ArgumentList $_ -ScriptBlock {
-    $hostn = $args[0]
-    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
-}}; while ($true) {get-job | receive-job; sleep 1}
+TODO: Maybe the fact that I ping hostnames instead of IPs means I perform 
+      a DNS resolution for every ping. 
+	  This MAY be stressing the OS. 
+	  This also means that I may be getting different IPs every time
+	  and I have seen that one of them may present bad times or loss 
+	  (e.g. pinging hi.com I get either 50 or 150msec and either 0 or 5% loss)
+	  FIX: I can cache the address that $Ping.Send returns in its .Address property
+TODO: This mode of operation and displaying will be wonderful for detecting whether problems 
+      lie in your LAN, your router or your ISP
 
-
-$hosts = @('10.2.11.10','10.13.255.48','185.3.220.2','62.169.224.62','z1.z1.vpbx.gr')
-$hosts | %{
-  Start-ThreadJob -ThrottleLimit 40 -ArgumentList $_ -ScriptBlock {
-    $hostn = $args[0]
-    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
-}}; while ($true) {get-job | receive-job; sleep 1}
-#-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-TODO: Maybe the way I ping hostnames like acx.com means I perform 
-      a DNS resolution for every ping
-TODO:
      RTT VARIANCE(p95-min), per 2' for 300', min=0, max=206, last=17 (ms)
  300|_________________________________________________________________________________________
     |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
@@ -126,7 +113,7 @@ TODO: I could probably add a heatmap with 2 periods per character.
     from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
 #>
 
-<# Re: targets for pinging & DNS querying
+<# Re: targets for pinging 
    ===========================================
    THE BASIC FACTS
    ---------------
@@ -138,9 +125,6 @@ TODO: I could probably add a heatmap with 2 periods per character.
    It's best to have AT LEAST 4 hosts in each line so that if you ping
    every 1/2sec you are pinging each host at a slow pace of 1 ping per 2 seconds
 
-   Don't add a DNS server to both lists even if it responds to pings
-   They seem to throtle their packets per second
-
    MORE DETAILS
    ------------
    Although you may be tempted to think that all hosts of one column are
@@ -151,32 +135,25 @@ TODO: I could probably add a heatmap with 2 periods per character.
    host of another line, and some random host of another line
    and so on...
 #>
-$DNS_TARGET_LIST = @(`
-    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'   , '8.8.4.4'     ,'208.67.222.222' , '208.67.220.220' , '4.2.2.2'    , '4.2.2.1'        ,'209.244.0.4',   '216.146.35.35', '216.146.36.36' , '209.244.0.3'   , '89.233.43.71'),
-    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26', '8.20.247.20' ,'185.225.168.168', '185.228.169.168', '76.76.19.19', '76.223.122.150' ,'216.146.35.35', '216.146.36.36', '91.239.100.100', '209.88.198.133', '195.46.39.39'),
-    @('176.103.130.130', '176.103.130.131', '64.6.64.6' , '64.6.65.6'   ,'216.87.84.211'  , '23.90.4.6'      , '77.88.8.8'  , '77.88.8.1'      ,'156.154.70.5',  '156.157.71.5',  '81.218.119.11' , '195.46.39.40'  ,  '74.82.42.42')
-)
+
 
 $PING_TARGET_LIST = @(`
     @('bvs.com','cm.com','md.com','ani.com','btq.com','ads.com','ccm.com','aip.com','cbv.com','bqs.com','pq.com','apr.com','tn.com','btc.com','abt.com','zb.com'),
     @('adu.com','aau.com','eb.com','alj.com','ao.com','afg.com','ef.com','aex.com','aje.com','aae.com','bts.com','cgr.com','arv.com','cdg.com','zl.com','atl.com'),
     @('akc.com','av.com','amf.com','akk.com','tu.com','acz.com','bom.com','rv.com','aok.com','ci.com','anf.com','amh.com','byl.com','aaw.com','vw.com','car.com'),
-    @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com','wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','bop.com'),
-    @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com','hi.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
+    @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com','wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','jy.com'),
+    @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com','bo.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
     @('agl.com','uj.com','bwo.com','brc.com','mu.com','cg.com','cfk.com','kj.com','ceb.com','bwb.com','box.com','cdq.com','adk.com','bwz.com','cdp.com','ww.com'),
-	@('bwv.com','cbm.com','bny.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bwh.com','ej.com','xi.com')
+    @('bwv.com','cbm.com','ov.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bv.com','ej.com','xi.com'),
+    @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com','arb.com','cby.com','abc.com','ev.com','boz.com','aqx.com','bgt.com','axp.com'),   
+    @('es.com','bmg.com','ck.com','btx.com','cds.com','cgt.com','ft.com','cb.com','cbs.com','pu.com','acc.com','cgg.com','byj.com','agu.com','qa.com','vy.com'),
+    @('cfv.com','avd.com','mj.com','qp.com','bxa.com','ajl.com','bzz.com','bjj.com','alc.com','apg.com','cd.com','apl.com','bwn.com','jm.com','agh.com','and.com')
 )
 <#
 
   Some pingable Hosts 
   --------------------------------
-
-    @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com','arb.com','cby.com','abc.com','ev.com','boz.com','aqx.com','bgt.com','axp.com'),   
-    @('es.com','bmg.com','ck.com','btx.com','cds.com','cgt.com','ft.com','cb.com'),
-    @('cbs.com','pu.com','acc.com','cgg.com','byj.com','agu.com','qa.com','vy.com'),
-    @('cfv.com','avd.com','mj.com','qp.com','bxa.com','ajl.com','bzz.com','bjj.com'),
-    @('alc.com','apg.com','cd.com','apl.com','bps.com','cgd.com','agh.com','and.com'),
-    @('bwn.com','ov.com','jy.com','bv.com','jm.com','bo.com','si.com','bru.com'),
+    @('si.com','bru.com'),
     @('pge.com','lgs.com','qeb.com','qka.com','cjw3301.github.io','pvk.com','qad.com','qki.com'),
     @('nt.com','ccc.com','abn.com','apd.com','cag.com','bvm.com','zg.com','gq.com'),
     @('og.com','ib.com','ahj.com','bvh.com','qz.com','wv.com','bg.com','bae.com'),
@@ -199,15 +176,6 @@ $PING_TARGET_LIST = @(`
     @('bsw.com','bkt.com','cch.com','afn.com','aho.com','abd.com','bnq.com','dz.com' ), 
     @('qat.com','mod.com','djx.com','doc.com','psc.com','kiq.com','ilm.com','pzf.com')
 
-  Hosts near my test VDSL line
-  --------------------------------
-    @('10.13.255.48','10.13.255.50','10.13.255.61','10.13.255.63','10.13.255.64','10.13.255.93','10.13.255.105','10.13.255.185'),
-    @('185.3.220.2','185.3.220.3','185.3.220.7','185.3.220.32','185.3.220.40','185.3.220.65','185.3.220.87','185.3.220.92'),
-    @('185.3.220.107','185.3.220.111','185.3.220.153','185.3.220.190','185.3.220.201','185.3.220.192','62.169.224.37','62.169.224.51'),
-    @('62.169.224.55','62.169.224.62','62.169.224.63','62.169.224.67','62.169.224.93','62.169.224.102','62.169.224.104','62.169.224.106'),
-    @('62.169.224.107','62.169.224.118','62.169.224.119','62.169.224.128','62.169.224.146','62.169.224.149','62.169.224.159','62.169.224.161'),
-    @('62.169.224.160','62.169.224.175','62.169.224.176','62.169.224.177','62.169.224.179','62.169.224.196','62.169.224.193','62.169.224.200')
-
 
   Well known DNS servers
   ---------------------------
@@ -216,15 +184,6 @@ $PING_TARGET_LIST = @(`
     @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ,'216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
     @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ,'216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
     @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
-
-  BAD DNS servers
-  ---------------
-  '84.200.70.40','91.239.100.100', '89.233.43.71'
-
-  Pingable hosts 
-  ---------------
-  https://www.dotcom-monitor.com/blog/technical-tools/network-location-ip-addresses/
-
 
 #>
 
@@ -326,6 +285,11 @@ $HistBucketsCount=10
 $DebugMode=0
 $script:AggPeriodSeconds = 0
 $script:status = ""
+
+# Collect some basic statics about each host
+$HOST_STATS_ATTEMPTS = @{}
+$HOST_STATS_FAILURES = @{}
+$HOST_STATS_MIN_REAL_RTT = @{}
 
 $CodeOfDnsQuery = @'
 Function Start-DNSQuery {
@@ -446,6 +410,7 @@ Function Start-MultiDnsQueries {
     $max_values_to_keep = 40
     $last_RTTs = @{}
     $failures = @{}
+	$attempts = @{} # how many pings we have sent
     $fail_score = @{}
     $Median_of_last_RTTs = @{}
     $Baseline = $null
@@ -454,6 +419,7 @@ Function Start-MultiDnsQueries {
         $last_RTTs[$_].enqueue(9999)
         $Median_of_last_RTTs[$_] = 99
         $failures[$_] = 0
+		$attempts[$_] = 0
         $fail_score[$_] = 0
     }
 
@@ -523,6 +489,7 @@ Function Start-MultiDnsQueries {
         }
 
         $ping_count += 1
+		$attempts[$target] = $attempts[$target] + 1
         if ($status -ne 'Success') {
             # failed ping
 
@@ -565,6 +532,7 @@ Function Start-MultiDnsQueries {
             Median_of_last_RTTs = $Median_of_last_RTTs[$target]; `
             Baseline = $Baseline; `
             failures = $failures[$target]; `
+			attempts = $attempts[$target]; `
             group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
@@ -588,6 +556,19 @@ Function Start-MultiDnsQueries {
 }
 '@
 
+<#
+#################################################################################
+# The code of Start-MultiPings is very close to this quick'n'dirty working code:
+#################################################################################
+
+$hosts = @('cbv.com','bwv.com','aje.com','aok.com','bvs.com','bsw.com','aue.com','akc.com','arq.com','ceb.com','cbs.com','alc.com','cfv.com','hi.com')
+$hosts | %{
+  Start-ThreadJob -ThrottleLimit 400 -ArgumentList $_ -ScriptBlock {
+    $hostn = $args[0]
+    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
+}}; while ($true) {get-job | receive-job; sleep 1}
+
+#>
 $CodeOfMultiPings = @'
 Function Start-MultiPings {
     # Will try hard to send pings at exact times
@@ -633,13 +614,18 @@ Function Start-MultiPings {
         return $Baseline
     }
 
-    # create a hash table to hold the last N RTTs of each host
+	$attempts = @{} # how many pings we have sent
+    $failures = @{} # how many pings failed
+    $fail_score = @{} 
+	# Regarding $fail_score: 
+	# 0...8 = last N CONSEQUTIVE attempts failed 
+	# 9     = 9 OR MORE of the last N CONSEQUTIVE attempts failed
+
+    # We keep the last N RTTs of each host
     # in order to compute the average of mins which will allow us
     # to "normalize" the different groups close to a common baseline
     $max_values_to_keep = 40
     $last_RTTs = @{}
-    $fail_score = @{}
-    $failures = @{}
     $Median_of_last_RTTs = @{}
     $Baseline = $null
     $target_list | %{
@@ -648,6 +634,7 @@ Function Start-MultiPings {
         $Median_of_last_RTTs[$_] = 9999
         $fail_score[$_] = 0
         $failures[$_] = 0
+		$attempts[$_] = 0
     }
 
     if ($TwicePerSec) {$PerSec=2} else {$PerSec=1}
@@ -667,8 +654,11 @@ Function Start-MultiPings {
         } else {
             # cycle over available targets
             $target = $target_list[$target_counter % $target_list.length]
-            # if a target has 3 consequtive failures it has 9/70 chance of been skiped
-            # if it has 9 consequtive failures (or more) it has 69/70 chance
+            # if a target has 3 consequtive failures it has a 13%(=9/70) chance  of been skiped
+            # if it has 9 or more consequtive failures it has 98.5%(=69/70) chance  
+			# 70 = how many numbers from 21 up to 91 
+			#  9 = how many numbers from 21 up to 30
+			# 69 = how many numbers from 21 up to 90
             # NOTE: strangely -maximum 92 gives values that are at most 91
             while ($fail_score[$target]*10 -ge (get-random -minimum 21 -maximum 92)) {
                 $target_counter += 1
@@ -691,6 +681,7 @@ Function Start-MultiPings {
 
         $ts_end = (Get-Date)
         $ping_count += 1
+		$attempts[$target] = $attempts[$target] + 1
         if ($ret.Status -ne 'Success') {
             # failed ping
             $real_RTT = 9999
@@ -731,6 +722,7 @@ Function Start-MultiPings {
             Median_of_last_RTTs = $Median_of_last_RTTs[$target]; `
             Baseline = $Baseline; `
             failures = $failures[$target]; `
+			attempts = $attempts[$target]; `
             group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
@@ -1399,7 +1391,7 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
     if ($y_min -lt 10) {$y_min = 0}
     $y_max = (y_axis_max $stats.min $stats.max $y_min 10)
     if ($y_max -eq $y_min) {$y_max = (std_num_ge $y_max + 1)}
-    $title = "RTT VARIANCE(p95-min), $AggPeriodDescr, min=<min>, max=<max>, last=<last> (ms)"
+    $title = "RTT VARIANCE(p95-min), $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     render_bar_graph $values $title "<stats><H_grid>" 9999 `
         $y_min $y_max
 
@@ -1472,7 +1464,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
         # decide Y axis limits
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-        $y_max = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
+        $y_max = $PING_TARGET_LIST.count
         render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 $y_max  $JITTER_BAR_GRAPH_THEME
     }
 
@@ -1491,7 +1483,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
             $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
             echo "$COL_IMP_LOW     (Saving to $filename)"
         }
-        $error = $null # empty $error which collects errors from pings and DNS queries
+        $error = $null # empty $error which collects errors from pings 
         [gc]::Collect() # force garbage collection
     }
 
@@ -1689,6 +1681,8 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
         if (($script:AggPeriodSeconds -ge $AggregationSeconds) -and ($RTT_values.count -gt 2)) {
             # This code executes once every AggPeriodSeconds
+			#------------------------------------------------
+			
             $AggPeriodStart = (get-date) # FIXME must subtract as many seconds as we are already after the AggregationSeconds
             if (!($DebugMode)) {$script:full_redraw = $true}
 
@@ -1702,7 +1696,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             # Too low = less than half of the all time maximum number of responders 
             $values = @($RespondersCnt_values | `
                 select -Last ($AggregationSeconds * $PingsPerSec) )
-            $too_low_values = @($values | ?{$_ -lt $All_max_Responders/2})
+            $too_low_values = @($values | ?{$_ -lt ($PING_TARGET_LIST.count / 2)})
             if ($too_low_values) {
                 $SlowResponders_values.enqueue(
                     [math]::round(100 * $too_low_values.count / $values.count,1))
@@ -1746,6 +1740,14 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
             # signal that it is time to update the file with the current screen
             $save_screen_to_file = $true
+			
+			# save $HOST_STATS to file
+			$txt = "HOST STATISTICS`nHost        `tAttempts`tFailures`tMin(RTT)"
+			$HOST_STATS_ATTEMPTS.keys | sort | %{
+				$txt = $txt + "`n$($_.PadRight(12))`t$($HOST_STATS_ATTEMPTS[$_])`t`t$($HOST_STATS_FAILURES[$_])`t`t$($HOST_STATS_MIN_REAL_RTT[$_])" 
+			}
+			echo $txt > $script:STATS_FILE
+
         }
 
 
@@ -1857,6 +1859,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         $ts = (get-date -format 'yyyy-MM-dd_HH.mm.ss')
         $script:SCREEN_DUMP_FILE = "$($env:TEMP)\ops.$ts.screen"
         $script:PINGREC_FILE = "$($env:TEMP)\ops.$ts.pingrec"
+		$script:STATS_FILE = "$($env:TEMP)\ops.$ts.stats"
         "pingrec-v1,$ts,$PingsPerSec pings/sec" > $script:PINGREC_FILE
         if (!($Title)) {
             $Title = "$Target"
@@ -1873,20 +1876,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
         $jobs = @()
         if ($parallel_testing) {
-            $total_threads = ($DNS_TARGET_LIST.count + $PING_TARGET_LIST.count)
-            $DNS_TARGET_LIST | %{
-                $group_id = $_[0] + $_[1]
-                $jobs += @((
-                    Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiDnsQueries -ScriptBlock {
-                        $PingsPerSec = $args[0]
-                        $target_list = $args[1]
-                        $CodeOfMultiDnsQueries = $args[2]
-                        . Invoke-Expression $CodeOfMultiDnsQueries
-                        $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
-                        Start-MultiDnsQueries -target_list $target_list
-                    }
-                ))
-            }
+            $total_threads = $PING_TARGET_LIST.count
             $PING_TARGET_LIST | %{
                 $group_id = $_[0] + $_[1]
                 $jobs +=  @((
@@ -1901,22 +1891,6 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 ))
             }
         } else {
-<#
-            # DNS query of specific target
-            # (Instead of the default ping specific target mode)
-            #----------------------------------
-            $jobs += @((
-                start-job -ArgumentList $PingsPerSec, $target, $CodeOfDnsQuery -ScriptBlock {
-                        $PingsPerSec = $args[0]
-                        $target = $args[1]
-                        $CodeOfDnsQuery = $args[2]
-                        . Invoke-Expression $CodeOfDnsQuery
-                        Start-DNSQuery
-                            -Interval (1000/$PingsPerSec)
-                            -Target $target
-                    }
-            ))
-#>
             $group_id = $target
             $last_RTTs[$group_id] = New-Object System.Collections.Queue
             $last_RTTs[$group_id].enqueue(99)
@@ -1964,10 +1938,23 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     # $data
                     if ($data) {
                         # data contain these properties:
-                        #     sent_at <-get-date
-                        #     Status
-                        #     RTT
+						#     sent_at <-get-date
+						#     Status
+						#     RTT
+						#     target
+						#     ping_count
+						#     dt
+						#     real_RTT
+						#              ' for this specific target
+						#     attempts
+						#     failures
+						#     Median_of_last_RTTs
+						#     Baseline
+						#
+						#     group_id
+						#     debug
                         if ($parallel_testing) {
+								
                             # ?{$_} ignores some $null data -- don't know why they are there
                             $data_sorted = ($data | ?{$_} |  sort-object -property sent_at)
                             if (($DebugData) -and ($ping_count -lt 20000)) {
@@ -1982,6 +1969,14 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                             write-verbose " "
 
                             $data_sorted | ?{$_} | %{
+								$HOST_STATS_ATTEMPTS[$_.target] = $_.attempts
+								$HOST_STATS_FAILURES[$_.target] = $_.failures
+								if ($_.target -in $HOST_STATS_MIN_REAL_RTT.keys) {
+									$HOST_STATS_MIN_REAL_RTT[$_.target] = [math]::min($HOST_STATS_MIN_REAL_RTT[$_.target], $_.real_RTT)
+								} else {
+									$HOST_STATS_MIN_REAL_RTT[$_.target] = $_.real_RTT
+								}
+
                                 write-verbose $_
                                 if ($_.status -eq 'Success' -and $last_success_at -lt $_.sent_at) {
                                     # if later I receive packets with sent_at before this
