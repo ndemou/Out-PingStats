@@ -12,33 +12,35 @@ leaving your PowerShell terminal 🙂
 
 #### You want to evaluate the quality of a connection for minutes or hours 
 
-Out-PingStats can easily and **nicely** display a few hours worth of data in one screen. It also records every single RTT in a `.pingrec` file saved in your %TEMP% folder.
+Out-PingStats can easily and **nicely** display a few hours worth of data in one screen. 
+It also records every single RTT in a `.pingrec` file saved in your %TEMP% folder.
 
 #### You want to evaluate the uplink quality of a large network
 
 In such cases one will typically `ping google.com`
 but some times google.com will throttle incoming packets and 
-this will appear as packet loss in your pings. 
+this will appear as packet loss. 
 Out-PingStats is immune to this problem.
 <details>
   <summary>More info</summary>
   
-  Out-PingStats pings about a dozen different hosts in parallel and implements a smart
-  algorithm to combine the different response times in one meaningful value.
-  If you see packet loss or the RTT jumping up then you know it's 
-  because of a real problem in your uplink and not because google.com
-  or whatever is throttling your pings.
+  Out-PingStats pings about a dozen different hosts in parallel, implements a smart
+  algorithm to combine the different response times in one meaningful value 
+  and changes between many dozen hosts so that it doesn't overwhelm any one of them.
+  If you see packet loss or the response time jumping up then you know it's 
+  because of a real problem in your uplink and not because a specific host
+  is throttling your pings.
 
   This is not a minor issue: 
-  I have, in many cases, seen packet loss of 3% to 5% and some times even more.
+  I have, in many cases, seen packet loss of 3% or more.
   My assumption is that in a LAN with many devices
-  there's greater chance that enough of them will happen to "hammer"
-  the host you ping.
+  there's greater chance that enough of them will happen to be sending packets
+  the host I happened to ping and that these hosts throttle incoming packets.
 </details>
 
-#### You love your PowerShell but prefer graphs over a long list of numbers
+#### You love your shell but prefer graphs over a long list of numbers
 
-Sorry robots, this is for humans :-)
+Sorry robots, this is not for you :-)
 
 ### TLDR How to try it out
 
@@ -55,10 +57,14 @@ Sorry robots, this is for humans :-)
     
    2. Quick'n'dirty test of the connection to a specific host in your LAN:
     
+           # download
            powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
+           # run
            powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
 
-Your graphs will be nice but probably not "high quality". Read below about selecting a font that will display perfect graphs.
+You will good enough graphs without configuring anything but they
+will probably not be the highest quality possible. 
+Read below about selecting a font that will display the best graphs possible.
 
 ### How to use
 
@@ -68,30 +74,43 @@ Your graphs will be nice but probably not "high quality". Read below about selec
     # To test network connection to 10.1.1.1 by pinging at 4 pings per second:
     Out-PingStats -PingsPerSec 4 10.1.1.1 
 
-If you want to evaluate your connection to a specific host (e.g. when you want to test your ethernet/WIFI quality) you specify the host with `-Target` and maybe also set a higher ping rate (with `-PingsPerSec`). In this case Out-PingStats will obviously only ping the host you specified.
+If you want to evaluate your connection to a specific host 
+(e.g. when you want to test your ethernet/WIFI quality)
+you specify the host with `-Target` and maybe also set 
+a higher ping rate (with `-PingsPerSec`). 
+In this case Out-PingStats will obviously only ping the host you specified.
 
 ### Understanding the graphs
 
 The **LAST RTTs** graph at the top shows one bar for every ping/DNS query.
-It's a bit better than looking at the text output of the ping command.
+It's a bit better than looking at the raw output of `ping.exe`.
 Timeouts/lost packets will appear as a bar of red stars: 
 
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
 The **RTT HISTOGRAM** includes the most recent few hundred pings.
-If you don't know what a histogram is take a look at [wikipedia](https://en.wikipedia.org/wiki/Histogram), it's a very interesting way of representing a group of measurements.
-In any case you will need some experience with this graph to get a feeling of what is *normal* and what is not but I think it worths the small effort.
+If you don't know what a histogram is take a look at [wikipedia](https://en.wikipedia.org/wiki/Histogram), 
+it's a very interesting way of representing a group of measurements.
+In any case you will need some experience with this graph to get a feeling 
+of what is *normal* and what is not but I think it worths the time spent.
 Take a look at the examples below for a quick start.
 
 #### Slow updating graphs
 
 All graphs except LAST RTTs and HISTOGRAM are **slow updating graphs**. 
-Each bar in them represents some **indicator of network quality** that is computed 
-for a fixed *period* of several seconds. 
+Each bar represents some **indicator of network quality** that is computed 
+for a fixed *period* of several seconds. We get all the RTTs of that period
+and we aggregate them to one value.
 The *period* is by default 2 minutes but can be changed with `-AggregationSeconds`.
 In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
 > **For all these graphs the lower the better**
+
+**% of TIME with LOW RESPONDERS** This is computed only when evaluating
+the quality of the uplink to the internet. In that case we ping about a dozen
+hosts in parallel. Some times a few of them may not respond. 
+This graph shows the percentage 
+of time where at least about half of them called to reply.
 
 **RTT BASELINE** `= min(RTT)` for the period.
 
