@@ -62,7 +62,7 @@ Sorry robots, this is not for you :-)
            # run
            powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
 
-You will good enough graphs without configuring anything but they
+You will get good enough graphs without configuring anything but they
 will probably not be the highest quality possible. 
 Read below about selecting a font that will display the best graphs possible.
 
