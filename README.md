@@ -1,10 +1,6 @@
 ## What is it?
 
-Out-PingStats displays nice, detailed and easy to understand graphs 
-that help you assess the short and long-term quality of your 
-uplink to the internet or your connection to a specific host. 
-Oh! and all that without 
-leaving your PowerShell terminal 🙂
+Out-PingStats is a program that displays detailed and easy-to-understand graphs to help you assess the short- and long-term quality of your internet uplink or connection to a specific host. You can use it without leaving your PowerShell terminal.
 
 ![image](https://user-images.githubusercontent.com/4411400/208316162-c115a6c9-eca6-49d6-94d8-b90c9b6f2628.png)
 
@@ -12,35 +8,24 @@ leaving your PowerShell terminal 🙂
 
 #### You want to evaluate the quality of a connection for minutes or hours 
 
-Out-PingStats can easily and **nicely** display a few hours worth of data in one screen. 
-It also records every single RTT in a `.pingrec` file saved in your %TEMP% folder.
+Out-PingStats can display several hours' worth of data in one screen, making it easy to assess the quality of a connection over time. It also saves every single round-trip time (RTT) in a `.pingrec` file in your `%TEMP%` folder.
 
 #### You want to evaluate the uplink quality of a large network
 
-In such cases one will typically `ping google.com`
-but some times google.com will throttle incoming packets and 
-this will appear as packet loss. 
-Out-PingStats is immune to this problem.
+When evaluating the uplink quality of a large network, people often use `ping google.com`, but sometimes, incoming packets to Google.com can be throttled, leading to packet loss. Out-PingStats is immune to this problem.
+
 <details>
   <summary>More info</summary>
   
-  Out-PingStats pings about a dozen different hosts in parallel, implements a smart
-  algorithm to combine the different response times in one meaningful value 
-  and changes between many dozen hosts so that it doesn't overwhelm any one of them.
-  If you see packet loss or the response time jumping up then you know it's 
-  because of a real problem in your uplink and not because a specific host
-  is throttling your pings.
+  Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host throttling your pings.
 
-  This is not a minor issue: 
-  I have, in many cases, seen packet loss of 3% or more.
-  My assumption is that in a LAN with many devices
-  there's greater chance that enough of them will happen to be sending packets
-  the host I happened to ping and that these hosts throttle incoming packets.
+  This is not a minor issue: in many cases, I have observed packet loss of 3% or more. My assumption is that in a LAN with many devices, there's a greater chance that enough devices will happen to be sending packets to the host you chose to ping, and these hosts throttle incoming packets.
 </details>
 
-#### You love your shell but prefer graphs over a long list of numbers
+#### You prefer graphs to a long list of numbers and love using your shell
 
-Sorry robots, this is not for you :-)
+Out-PingStats is for you if you love using your shell but prefer graphs over a long list of numbers.
+
 
 ### TLDR How to try it out
 
@@ -110,7 +95,7 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 the quality of the uplink to the internet. In that case we ping about a dozen
 hosts in parallel. Some times a few of them may not respond. 
 This graph shows the percentage 
-of time where at least about half of them called to reply.
+of time where at least half of them failed to reply.
 
 **RTT BASELINE** `= min(RTT)` for the period.
 
