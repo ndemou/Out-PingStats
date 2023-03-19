@@ -28,14 +28,11 @@ When evaluating the uplink quality of a large network, people often use `ping go
   <summary>More info</summary>
   
   Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host throttling your pings.
-
-  This is not a minor issue: in many cases, I have observed packet loss of 3% or more. My assumption is that in a LAN with many devices, there's a greater chance that enough devices will happen to be sending packets to the host you chose to ping, and these hosts throttle incoming packets.
 </details>
 
-#### You prefer graphs to a long list of numbers and love using your shell
+#### You prefer graphs to a long list of numbers but also love your shell
 
-Out-PingStats is for you if you love using your shell but prefer graphs over a long list of numbers.
-
+Well then, Out-PingStats is for you!
 
 ### TLDR How to try it out
 
