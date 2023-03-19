@@ -1,13 +1,16 @@
 <#
-    v0.23.0
-
-TODO: Maybe the fact that I ping hostnames instead of IPs means I perform 
-      a DNS resolution for every ping. 
-	  This MAY be stressing the OS. 
-	  This also means that I may be getting different IPs every time
-	  and I have seen that one of them may present bad times or loss 
-	  (e.g. pinging hi.com I get either 50 or 150msec and either 0 or 5% loss)
-	  FIX: I can cache the address that $Ping.Send returns in its .Address property
+    v0.23.2
+	
+TODO: I need a becon ping to 127.0.0.1 to run at the same rate as the main pings
+      Main loop will use replies from localhost as a reference "sampling clock".
+	  This is usefull because now that timeout is larger than the ping rate
+	  there can be silence periods where I will simple get no data back from 
+	  Start-MultiPings. During these silent periods localhost will respond
+	  and main-loop will be able to detect Start-MultiPings timeouts
+	  I could do it be accounting for past time (e.g. if Nsecs passed since last
+	  data from Start-MultiPings) but the becon technic is handy when we random
+	  at a laptop that goes to sleep.
+	  
 TODO: This mode of operation and displaying will be wonderful for detecting whether problems 
       lie in your LAN, your router or your ISP
 
@@ -300,10 +303,9 @@ Function Start-DNSQuery {
     Param(
         [string]$target="1.0.0.1",
         [int]$Interval = 1000,
-        [int]$TimeOut = 0
+        [int]$TimeOut = 3000
     )
 
-    if ($TimeOut -eq 0) {$TimeOut = $Interval*0.9}
     $ping_count = 0
     $ts_first_ping = (Get-Date)
     while ($True) {
@@ -370,7 +372,7 @@ Function Start-MultiDnsQueries {
         [array]$target_list= @('8.8.8.8', '208.67.222.222', `
             '1.1.1.1', '4.2.2.2', '4.2.2.1', '8.8.4.4', `
             '208.67.220.220', '1.0.0.1'),
-        [int]$TimeOut = 0,
+        [int]$TimeOut = 3000,
         [switch]$TwicePerSec = $False
     )
 
@@ -425,7 +427,6 @@ Function Start-MultiDnsQueries {
 
     if ($TwicePerSec) {$PerSec=2} else {$PerSec=1}
     $Interval = 1000 / $PerSec
-    if ($TimeOut -eq 0) {$TimeOut = $Interval*0.9}
     $ping_count = 0
     $target_counter = 0
     $cur_msec = (Get-Date).millisecond
@@ -442,10 +443,12 @@ Function Start-MultiDnsQueries {
         } else {
             # cycle over available targets
             $target = $target_list[$target_counter % $target_list.length]
-            # if a target has 3 consequtive failures it has 9/70 chance of been skiped
-            # if it has 9 consequtive failures (or more) it has 69/70 chance
+            # If a target has 3 more consequtive failures than the average then 
+			# it has 9/70 chance of been skiped.
+            # If it has >=9 more consequtive failures than the average it has 69/70 chance
             # NOTE: strangely -maximum 92 gives values that are at most 91
-            while ($fail_score[$target]*10 -ge (get-random -minimum 21 -maximum 92)) {
+			$relative_fail_score = $fail_score[$target] - [int]($fail_score.values | measure-object -Average).Average
+            while ($relative_fail_score*10 -ge (get-random -minimum 21 -maximum 92)) {
                 $target_counter += 1
                 $debug_msg += "$($target) skiped "
                 $target = $target_list[$target_counter % $target_list.length]
@@ -580,7 +583,7 @@ Function Start-MultiPings {
         [array]$target_list= @('8.8.8.8', '208.67.222.222', `
             '1.1.1.1', '4.2.2.2', '4.2.2.1', '8.8.4.4', `
             '208.67.220.220', '1.0.0.1'),
-        [int]$TimeOut = 0,
+        [int]$TimeOut = 3000,
         [switch]$TwicePerSec = $False
     )
 
@@ -627,6 +630,7 @@ Function Start-MultiPings {
     $max_values_to_keep = 40
     $last_RTTs = @{}
     $Median_of_last_RTTs = @{}
+	$Address = @{}
     $Baseline = $null
     $target_list | %{
         $last_RTTs[$_] = New-Object System.Collections.Queue
@@ -635,11 +639,11 @@ Function Start-MultiPings {
         $fail_score[$_] = 0
         $failures[$_] = 0
 		$attempts[$_] = 0
+		$Address[$_] = ""
     }
 
     if ($TwicePerSec) {$PerSec=2} else {$PerSec=1}
     $Interval = 1000 / $PerSec
-    if ($TimeOut -eq 0) {$TimeOut = $Interval*0.9}
     $ping_count = 0
     $target_counter = 0
     $cur_msec = (Get-Date).millisecond
@@ -654,13 +658,15 @@ Function Start-MultiPings {
         } else {
             # cycle over available targets
             $target = $target_list[$target_counter % $target_list.length]
-            # if a target has 3 consequtive failures it has a 13%(=9/70) chance  of been skiped
-            # if it has 9 or more consequtive failures it has 98.5%(=69/70) chance  
+            # If a target has 3 more consequtive failures than the average then 
+			# it has 9/70 chance of been skiped.
+            # If it has >=9 more consequtive failures than the average it has 69/70 chance
 			# 70 = how many numbers from 21 up to 91 
 			#  9 = how many numbers from 21 up to 30
 			# 69 = how many numbers from 21 up to 90
             # NOTE: strangely -maximum 92 gives values that are at most 91
-            while ($fail_score[$target]*10 -ge (get-random -minimum 21 -maximum 92)) {
+			$relative_fail_score = $fail_score[$target] - [int]($fail_score.values | measure-object -Average).Average
+            while ($relative_fail_score*10 -ge (get-random -minimum 21 -maximum 92)) {
                 $target_counter += 1
                 $debug_msg += "$($target) skiped "
                 $target = $target_list[$target_counter % $target_list.length]
@@ -669,7 +675,12 @@ Function Start-MultiPings {
         $sent_at = (Get-Date)
         $Ping = [System.Net.NetworkInformation.Ping]::New()
         try {
-            $ret = $Ping.Send($target, $TimeOut)
+			if ($Address[$target]) {
+				$ret = $Ping.Send($Address[$target], $TimeOut)
+			} else {
+				$ret = $Ping.Send($target, $TimeOut)
+				$Address[$target] = $ret.Address # cache IP address of $target
+			}
         } catch {
             $ret =[PSCustomObject]@{`
                 Status = $Error[0].Exception.GetType().FullName; `
@@ -723,6 +734,7 @@ Function Start-MultiPings {
             Baseline = $Baseline; `
             failures = $failures[$target]; `
 			attempts = $attempts[$target]; `
+			address = $address[$target]; `
             group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
@@ -752,11 +764,10 @@ Function Start-SpecialPing {
     # the elapsed time
     Param(
         [string]$target="",
-        [int]$TimeOut = 0,
+        [int]$TimeOut = 3000,
         [int]$Interval = 500
     )
 
-    if ($TimeOut -eq 0) {$TimeOut = $Interval*0.9}
     $ping_count = 0
     $ts_first_ping = (Get-Date)
     while ($True) {
@@ -1902,7 +1913,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     $target = $args[1]
                     $CodeOfSpecialPing = $args[2]
                     . Invoke-Expression $CodeOfSpecialPing
-                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec) -TimeOut ((1000/$PingsPerSec)*0.9)
+                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec)
                 }
             ))
         }
@@ -1948,6 +1959,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 						#              ' for this specific target
 						#     attempts
 						#     failures
+						#     address
 						#     Median_of_last_RTTs
 						#     Baseline
 						#
@@ -2132,7 +2144,7 @@ function helper_find_pingable_com_host($CheckAfterHost='') {
 
     $Hosts_to_try = $HOSTS_TO_PING_IN_PARALLEL*$HOSTS_TO_PING_IN_SERIES*4/$PERCENT_OF_RESPONDING_HOSTS
     $hosts_count = 0
-    foreach ($char in [char[]]'cdghijklmnopqrstuvwxyz') {
+    foreach ($char in [char[]]'abcdghijklmnopqrstuvwxyz') {
         $c1=$char
         foreach ($char in [char[]]'abcdefghijklmnopqrstuvwxyz') {
             $c2=$char
