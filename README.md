@@ -1,6 +1,6 @@
 ## What is it?
 
-Out-PingStats is a (largish) PowerShell script that displays detailed and easy-to-understand graphs to help you assess the short- and long-term quality of your internet uplink or connection to a specific host. You can use it without leaving your PowerShell terminal.
+Out-PingStats is a (largish) PowerShell script that displays detailed and easy-to-understand graphs to help you assess the short- and long-term quality of your internet uplink or connection to a specific host. You can use it without leaving your terminal.
 
 ## Example
 
