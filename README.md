@@ -2,11 +2,17 @@
 
 Out-PingStats is a program that displays detailed and easy-to-understand graphs to help you assess the short- and long-term quality of your internet uplink or connection to a specific host. You can use it without leaving your PowerShell terminal.
 
+## Example
+
+Wondering how close to ethernet performance your Wi-Fi can give? Run Out-PingStats, spend plenty of minutes with both and enjoy the results:
+
 ![image](https://user-images.githubusercontent.com/4411400/226208489-cbed48f5-181f-4579-90b0-5d50e768720a.png)
 
-On the left terminal we are pinging our gateway. Initially via ethernet and then via Wi-Fi. The difference is obvious. 
+On the left terminal we are pinging our gateway. Initially via ethernet and then via Wi-Fi. 
 
-At the same time on the right terminal we are evaluating our uplink. Again the difference between ethernet and Wi-Fi is obvious.
+At the same time on the right terminal we've let Out-PingStats evaluate our uplink. 
+
+Seeing the output it is obvious that with this low-level ISP router you wouldn't want to do VoIP or gaming via Wi-Fi. 
 
 ## Why would you want to use it? 
 
