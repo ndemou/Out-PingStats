@@ -12,7 +12,7 @@ On the left terminal we are pinging our gateway. Initially via ethernet and then
 
 At the same time on the right terminal we've let Out-PingStats evaluate our uplink. 
 
-Seeing the output it is obvious that with this low-level ISP router you wouldn't want to do VoIP or gaming via Wi-Fi. 
+Seeing the output it is obvious that your Wi-Fi great isn't disable for VoIP or gaming. 
 
 ## Why would you want to use it? 
 
@@ -30,7 +30,7 @@ When evaluating the uplink quality of a large network, people often use `ping go
   Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host throttling your pings.
 </details>
 
-#### You prefer graphs to a long list of numbers but also love your shell
+#### You love your shell, but also prefer graphs to long lists of numbers.
 
 Well then, Out-PingStats is for you!
 
