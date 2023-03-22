@@ -178,7 +178,7 @@ character per measurement. The character is `[char]($RTT+34)`
     -PingsPerSec
 
 Pings per second to perform.
-In the default mode of operation (if you don't specify a hostn with `-target`) you can only select 1 (the default) or 2.
+In the default mode of operation (if you don't specify a host with `-target`) you can only select 1 (the default) or 2.
 
 Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
 
@@ -207,7 +207,7 @@ When checking internet quality this script tries hard to be resilient to problem
 To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
 It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
 This way we minimize the chances of our pings getting throttled. 
-If at least two replies are received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
+If at least one reply is received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
 We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
 
 #### About the algorithm for RTT Normalization 
@@ -216,35 +216,15 @@ When we are reading RTTs from one and then another host with different average t
 it will appear as though there is jitter. To minimize this effect we use
 this method:
 
-  1) We keep the last 10 or 20 successfull RTTs from each host.
+  1) Keep the last N successfull RTTs from each host.
   2) Calculate the min of all these RTTs.
-  3) Calculate the *average of all minimums*.
+  3) Calculate a *baseline* value that follows the *minimum of all these minimums* **slowly** (we increment or decrement it by 1 or 2 msec per sample except if its difference to the real value grows too much in which case we make one big jump). 
   4) Adjust the real RTT values by moving them towards the 
-*average of all minimums* by as many msec as their min is away from
+*baseline* by as many msec as their min is away from
 the average min. 
 
-Example: 
-
-Say that during the last 10 pings the min RTT of 3 hosts are like this:
-
-                <----Last 10 RTTs----------->  Min Avg Avg-Min
-      - host1 : 40 42 50 45 41 40 42 50 45 41 : 40 50   10
-      - host2 : 63 63 60 66 62 61 63 61 66 62 : 60 50  -10
-      - host3 : 51 51 50 54 50 52 51 53 54 50 : 50 50    0
-
-(The value "Avg" above is the average of the three minimums -- 50 = (40+50+60)/3)
-
-Assuming that the minimums where the same before, then the Effective 
-RTTs will be calculated like this:
-
-     - host1 : 50 52 60 55 51 50 52 60 55 51 
-     - host2 : 53 53 50 56 52 51 53 51 56 52 
-     - host3 : 51 51 50 54 50 52 51 53 54 50 
-       
 Note that since we adjust the real RTTs by an amount that depends 
-on a *slow* changing average (the average of the minimum of the last *N* RTTs) 
-their variability is only slightly affected by the tiny amount of fluctuation 
-that the average is experiencing.
+on a *slow* changing value their variability is not affected.
 Note also that MultiPings is reporting to main code just one RTT value
 from the 3 hosts (the min RTT). Then the main code calculates the jitter 
 based on this artificial/agregate RTT value. I _think_ that this 
@@ -255,6 +235,11 @@ plausible that this slow reply is due to the DNS application rather than due
 to the network (DNS is not as simple as ping). By keeping just the min(RTT) of all
 parallel DNS queries we mostly suppress such sporadic spikes. 
 
-## Note for non European users
+## Note for users outside Europe & USA
 
-There's a list of IPs that are Europe centric in the code. You can create a nice list suited for your country by dot sourcing this program and running the helper function `helper_find_pingable_com_host` (it needs a few minutes to spit out the list). Check at the top of the code the declaration of `$PING_TARGET_LIST = ` and replace the value with the list you got.
+There's a list of .com hosts in the code that work fine for Europe and USA. 
+If you live elsewhere and you find the baseline RTT too high you can create a nice list suited for your country by 
+dot sourcing this program and running the helper function `helper_find_pingable_com_host` 
+(it needs a few minutes to spit out the list). 
+Check at the top of the code the declaration of `$PING_TARGET_LIST = ` 
+and replace the value with the list you got.
