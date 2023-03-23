@@ -1,15 +1,24 @@
 <#
-    v0.23.2
+    v0.23.3
 	
-TODO: I need a becon ping to 127.0.0.1 to run at the same rate as the main pings
+TODO: I need a beacon ping to 127.0.0.1 to run at the same rate as the main pings
       Main loop will use replies from localhost as a reference "sampling clock".
 	  This is usefull because now that timeout is larger than the ping rate
 	  there can be silence periods where I will simple get no data back from 
 	  Start-MultiPings. During these silent periods localhost will respond
 	  and main-loop will be able to detect Start-MultiPings timeouts
 	  I could do it be accounting for past time (e.g. if Nsecs passed since last
-	  data from Start-MultiPings) but the becon technic is handy when we random
-	  at a laptop that goes to sleep.
+	  data from Start-MultiPings) but the beacon technic is handy when we run
+	  on a laptop that goes to sleep.
+
+TODO: Hide the graph of "LAST Count of responders" if min=max (keep showing the
+      title: LAST Count of responders,  min=10, max=10, last=10, All time min=10
+	  Do the same for %TIME with LOW RESPONDERS if p95<1 for all values after the
+	  first two (which we ignore as transitional).
+	  %TIME with LOW RESPONDERS, min=0%, p95=0.5%, max=1%, last=0%
+	  Do the same for RTT BASELINE(min) if min/max >80%
+	  RTT BASELINE(min), min=10, p95=11, max=11, last=11 (ms)
+	  Do the same for Loss% if max=0%
 	  
 TODO: This mode of operation and displaying will be wonderful for detecting whether problems 
       lie in your LAN, your router or your ISP
@@ -651,6 +660,17 @@ Function Start-MultiPings {
         start-sleep -Milliseconds (1000-$cur_msec+8) # align at 0msec
     }
 
+	# Make one attempt to resolve the IPs of all targets before 
+	# starting to ping them (we will keep retring those that failed
+	# as we go)
+	$target_list | %{
+		$target = $_
+		try {
+			# resolve IP address of $target
+			$Address[$target] = [System.Net.Dns]::GetHostAddresses($target)[0].IPAddressToString
+		} catch {}
+	}
+
     while ($True) {
         $debug_msg = ''
         if ($target_list.length -eq 1) {
@@ -672,15 +692,21 @@ Function Start-MultiPings {
                 $target = $target_list[$target_counter % $target_list.length]
             }
         }
+		# If not yet resolved retry to resolve the IP address of $target
+		if (!($Address[$target])) {
+			try {
+				$Address[$target] = [System.Net.Dns]::GetHostAddresses($target)[0].IPAddressToString
+			} catch {
+				$debug_msg += "$($target): DnsResFail. "
+				# note that DNS failures will also cause a ping failure 
+				# so after many failures this host will get a high fail_score
+			}
+		}
+
         $sent_at = (Get-Date)
         $Ping = [System.Net.NetworkInformation.Ping]::New()
         try {
-			if ($Address[$target]) {
-				$ret = $Ping.Send($Address[$target], $TimeOut)
-			} else {
-				$ret = $Ping.Send($target, $TimeOut)
-				$Address[$target] = $ret.Address # cache IP address of $target
-			}
+			$ret = $Ping.Send($Address[$target], $TimeOut)
         } catch {
             $ret =[PSCustomObject]@{`
                 Status = $Error[0].Exception.GetType().FullName; `
@@ -730,11 +756,11 @@ Function Start-MultiPings {
             RTT = $effective_RTT; `
             dt = $Real_RTT - $effective_RTT; `
             real_RTT = $real_RTT; `
+			address = $address[$target]; `
             Median_of_last_RTTs = $Median_of_last_RTTs[$target]; `
             Baseline = $Baseline; `
             failures = $failures[$target]; `
 			attempts = $attempts[$target]; `
-			address = $address[$target]; `
             group_id = $target_list[0] + $target_list[1]; `
             debug = $debug_msg
         }
