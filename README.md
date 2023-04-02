@@ -12,7 +12,7 @@ On the left terminal we are pinging our gateway. Initially via ethernet and then
 
 At the same time on the right terminal we've let Out-PingStats evaluate our uplink. 
 
-Seeing the output it is obvious that your Wi-Fi great isn't disable for VoIP or gaming. 
+Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming. 
 
 ## Why would you want to use it? 
 
