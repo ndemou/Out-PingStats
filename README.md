@@ -204,7 +204,7 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 ### Parallel pings/smart aggregation
 
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
-To that end it will run a lot of DNS query and ping jobs in parallel. Each job queries a different DNS server or pings a different host every second.
+To that end it will run about 10 ping jobs in parallel threads. Each job pings a different host every second.
 It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
 This way we minimize the chances of our pings getting throttled. 
 If at least one reply is received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
@@ -212,34 +212,30 @@ We also use a smart algorithm to "normalize" the RTTs of different servers so th
 
 #### About the algorithm for RTT Normalization 
 
-When we are reading RTTs from one and then another host with different average times 
+At times when we are reading the RTT from one and then from another host with different average times 
 it will appear as though there is jitter. To minimize this effect we use
 this method:
 
-  1) Keep the last N successfull RTTs from each host.
+  1) Keep a record of the last N successfull RTTs from each host.
   2) Calculate the min of all these RTTs.
-  3) Calculate a *baseline* value that follows the *minimum of all these minimums* **slowly** (we increment or decrement it by 1 or 2 msec per sample except if its difference to the real value grows too much in which case we make one big jump). 
+  3) Calculate a *baseline* value that follows the *minimum of all these minimums* **slowly** 
+(we increment or decrement it by 1 or 2 msec per sample except if its difference to the real value grows too much in which case we make one big jump). 
   4) Adjust the real RTT values by moving them towards the 
 *baseline* by as many msec as their min is away from
 the average min. 
 
 Note that since we adjust the real RTTs by an amount that depends 
-on a *slow* changing value their variability is not affected.
+on a *slow* changing value their variability/jitter is only slightly affected.
 Note also that MultiPings is reporting to main code just one RTT value
-from the 3 hosts (the min RTT). Then the main code calculates the jitter 
+from all hosts (the min RTT). Then the main code calculates the jitter 
 based on this artificial/agregate RTT value. I _think_ that this 
-is better than taking the jitter for every host. Especially for MultiDnsQueries
-code I have seen that every few seconds I get a sporadic slow reply from every DNS
-server. This will register as two strong jitter measurements but it's more
-plausible that this slow reply is due to the DNS application rather than due 
-to the network (DNS is not as simple as ping). By keeping just the min(RTT) of all
-parallel DNS queries we mostly suppress such sporadic spikes. 
+is better than taking the jitter for every host. 
 
 ## Note for users outside Europe & USA
 
 There's a list of .com hosts in the code that work fine for Europe and USA. 
-If you live elsewhere and you find the baseline RTT too high you can create a nice list suited for your country by 
+If you live elsewhere and you find the baseline RTT is high you can create a nice list suited for your country by 
 dot sourcing this program and running the helper function `helper_find_pingable_com_host` 
 (it needs a few minutes to spit out the list). 
-Check at the top of the code the declaration of `$PING_TARGET_LIST = ` 
-and replace the value with the list you got.
+Then look at the top of the code for the declaration of `$PING_TARGET_LIST = ` 
+and replace its value with the list you got.
