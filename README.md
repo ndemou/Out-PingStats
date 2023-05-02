@@ -27,7 +27,8 @@ When evaluating the uplink quality of a large network, people often use `ping go
 <details>
   <summary>More info</summary>
   
-  Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host throttling your pings.
+  Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. 
+  If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host having its own problems or throttling your pings.
 </details>
 
 #### You love your shell, but also prefer graphs to long lists of numbers.
