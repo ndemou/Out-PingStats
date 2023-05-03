@@ -27,7 +27,7 @@ When evaluating the uplink quality of a large network, people often use `ping go
 <details>
   <summary>More info</summary>
   
-  Out-PingStats pings about a dozen different hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozens of hosts to avoid overwhelming any one of them. 
+  Out-PingStats pings 10 hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozen hosts to avoid overwhelming any one of them. 
   If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host having its own problems or throttling your pings.
 </details>
 
@@ -100,7 +100,7 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 > **For all these graphs the lower the better**
 
 **% of TIME with LOW RESPONDERS** This is computed only when evaluating
-the quality of the uplink to the internet. In that case we ping about a dozen
+the quality of the uplink to the internet. In that case we ping about 10
 hosts in parallel. Some times a few of them may not respond. 
 This graph shows the percentage 
 of time where at least half of them failed to reply.
@@ -205,11 +205,15 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 ### Parallel pings/smart aggregation
 
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
-To that end it will run about 10 ping jobs in parallel threads. Each job pings a different host every second.
-It has 4 sets of hosts to switch between so that each host will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
+To that end it will run 10 ping jobs in parallel threads. Each job pings a different host every second.
+It has 4 sets of hosts to switch between so that each host 
+will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
 This way we minimize the chances of our pings getting throttled. 
-If at least one reply is received at a specific second we consider it a success and we **only** take the minimum RTT into acount. 
-We also use a smart algorithm to "normalize" the RTTs of different servers so that we don't see jitter due to the differences between the RTTs of the different servers. 
+If at least one reply is received at a specific second we 
+consider it a success and we **only** take the minimum RTT into acount. 
+We also use a smart algorithm to "normalize" the RTTs of different 
+servers so that we don't see jitter due to the differences between 
+the RTTs of the different servers. 
 
 #### About the algorithm for RTT Normalization 
 
