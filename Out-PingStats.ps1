@@ -1,6 +1,14 @@
 <#
-    v0.23.3
-	
+v0.23.6
+    
+TODO: Some graphs (e.g. variance) set y-axis max to MAX(measurements)
+      If MAX/p95 > 5 set y-axis max to p95 instead
+TODO: I get this error when wifi disconnects for several seconds:
+		Format-PingTimes : Cannot index into a null array.
+		At C:\Users\NickDemou\OneDrive - enLogic\ndemou\Out-PingStats.ps1:2161 char:12
+		+          | Format-PingTimes `
+		+            ~~~~~~~~~~~~~~~~~~
+
 TODO: I need a beacon ping to 127.0.0.1 to run at the same rate as the main pings
       Main loop will use replies from localhost as a reference "sampling clock".
 	  This is usefull because now that timeout is larger than the ping rate
@@ -13,9 +21,9 @@ TODO: I need a beacon ping to 127.0.0.1 to run at the same rate as the main ping
 
 TODO: Hide the graph of "LAST Count of responders" if min=max (keep showing the
       title: LAST Count of responders,  min=10, max=10, last=10, All time min=10
-	  Do the same for %TIME with LOW RESPONDERS if p95<1 for all values after the
+	  Do the same for %TIME with PLENTY OF FAILURES if p95<1 for all values after the
 	  first two (which we ignore as transitional).
-	  %TIME with LOW RESPONDERS, min=0%, p95=0.5%, max=1%, last=0%
+	  %TIME with PLENTY OF FAILURES, min=0%, p95=0.5%, max=1%, last=0%
 	  Do the same for RTT BASELINE(min) if min/max >80%
 	  RTT BASELINE(min), min=10, p95=11, max=11, last=11 (ms)
 	  Do the same for Loss% if max=0%
@@ -626,6 +634,9 @@ Function Start-MultiPings {
         return $Baseline
     }
 
+	# we will use this object to send pings 
+	$Ping = [System.Net.NetworkInformation.Ping]::New()
+
 	$attempts = @{} # how many pings we have sent
     $failures = @{} # how many pings failed
     $fail_score = @{} 
@@ -670,6 +681,34 @@ Function Start-MultiPings {
 			$Address[$target] = [System.Net.Dns]::GetHostAddresses($target)[0].IPAddressToString
 		} catch {}
 	}
+<#
+	# Make one attempt to ping every target  (in parallel)
+	$target_list | %{
+		Start-ThreadJob -ThrottleLimit 20 -ArgumentList $_,$Address[$_] -ScriptBlock {
+			$Ping = [System.Net.NetworkInformation.Ping]::New()
+			$wait = (Get-Random -min 0 -max 0.4)
+			echo "$($args[0]) $($args[1]) waiting for $wait sec before starting"
+			sleep $wait
+			try {
+				$ret = $Ping.Send($args[1], 3000)
+				echo "$($args[0]) $($ret.Status)"
+			} catch {
+				echo "$($args[0]) Failed"
+			}
+		} | out-null
+	}
+	# wait for all pings to terminate 
+	$elapsed = 0 
+	$wait_timeout = 4
+	while (($elapsed -le $wait_timeout) -and ((get-job -State 'Running') -or (get-job -State 'NotStarted'))) {
+		write-verbose "$elapsed secs..."
+		sleep -Milliseconds 200
+		$elapsed += 0.2
+		get-job | receive-job | %{write-verbose $_}
+	} 
+	get-job | remove-job -force | out-null
+	sleep 1
+#>
 
     while ($True) {
         $debug_msg = ''
@@ -704,7 +743,6 @@ Function Start-MultiPings {
 		}
 
         $sent_at = (Get-Date)
-        $Ping = [System.Net.NetworkInformation.Ping]::New()
         try {
 			$ret = $Ping.Send($Address[$target], $TimeOut)
         } catch {
@@ -1383,7 +1421,7 @@ function render_bar_graph($y_values, $title="", $options="", $special_value, $de
     echo "${COL_TITLE}$(" " * ($width)) $ticks${COL_RST}"
     # echo "Oldest-> $y_values"
 }
-function render_slow_updating_graphs($ShowCountOfResponders) {
+function render_slow_updating_graphs($ShowCountOfFailedResponders) {
     # describe the sampling period and the total time we collect samples
     # e.g. per 2' for 14'
     $AggPeriodDescr = "per $([math]::round($AggregationSeconds/60,1))' "+`
@@ -1394,7 +1432,7 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
 
     # display $SlowResponders_values
     #------------------------------
-    if ($ShowCountOfResponders) {
+    if ($ShowCountOfFailedResponders) {
         $values = @($SlowResponders_values | select -last $MaxItems)
         $stats = (stats_of_series $values)
         if ($GraphMin -ne -1) {$y_min = $GraphMin} else {
@@ -1402,7 +1440,7 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
             if ($y_min -lt 10) {$y_min = 0}
         }
         if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = (y_axis_max $stats.min $stats.max $y_min 9)}
-        $title = "%TIME with LOW RESPONDERS,  $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
+        $title = "%TIME with PLENTY OF FAILURES,  $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
         render_bar_graph $values $title "<stats><H_grid>" 9999 `
             0 30 $JITTER_BAR_GRAPH_THEME
     }
@@ -1426,8 +1464,10 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
     $stats = (stats_of_series $values)
     $y_min = (std_num_le $stats.min)
     if ($y_min -lt 10) {$y_min = 0}
-    $y_max = (y_axis_max $stats.min $stats.max $y_min 10)
-    if ($y_max -eq $y_min) {$y_max = (std_num_ge $y_max + 1)}
+	if ($GraphMax -ne -1) {$y_max = $GraphMax} else {
+		$y_max = (y_axis_max $stats.min $stats.max $y_min 10)
+		if ($y_max -eq $y_min) {$y_max = (std_num_ge $y_max + 1)}
+	}
     $title = "RTT VARIANCE(p95-min), $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     render_bar_graph $values $title "<stats><H_grid>" 9999 `
         $y_min $y_max
@@ -1450,7 +1490,7 @@ function render_slow_updating_graphs($ShowCountOfResponders) {
     render_bar_graph @($Jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null `
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
 }
-function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
+function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
     if (($BarGraphSamples -eq -1) -or (!(Test-Path variable:script:EffBarsThatFit))) {
         $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
     }
@@ -1472,11 +1512,10 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
 
     # display the RTT bar graph
     $graph_values =  @($RTT_values | select -last $script:EffBarsThatFit)
-    #echo ([string][char]9472*75)
-    $title = "LAST RTTs,  $($graph_values.count) pings, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     # decide Y axis limits
     $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
     ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
+	$title = "LAST RTTs,  $($graph_values.count) pings, min=<min>, p95=<p95>, max=$($stats.max), last=<last> (ms)"
 
     $y_min = (std_num_le $stats.min)
     if ($y_min -lt 10) {$y_min = 0}
@@ -1493,11 +1532,11 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
     render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
 
-    if ($ShowCountOfResponders) {
+    if ($ShowCountOfFailedResponders) {
         # display the RespondersCnt bar graph
-        $graph_values =  @($RespondersCnt_values | select -last $script:EffBarsThatFit)
+        $graph_values =  @($RespondersFailed_values | select -last $script:EffBarsThatFit)
         #echo ([string][char]9472*75)
-        $title = "LAST Count of responders,  min=<min>, max=<max>, last=<last>, All time min=$All_min_Responders"
+        $title = "Count of hosts that did not reply,  min=<min>, max=<max>, last=<last>"
         # decide Y axis limits
         $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
@@ -1515,7 +1554,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfResponders) {
     }
 
     if ($Variance_values.count) {
-        render_slow_updating_graphs $ShowCountOfResponders
+        render_slow_updating_graphs $ShowCountOfFailedResponders
         if (Test-Path variable:script:SCREEN_DUMP_FILE) {
             $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
             echo "$COL_IMP_LOW     (Saving to $filename)"
@@ -1604,9 +1643,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $ScrUpdPeriodStart = $AggPeriodStart
 
         $RTT_values = New-Object System.Collections.Queue
-        $RespondersCnt_values = New-Object System.Collections.Queue
-        $All_min_Responders = $null
-        $All_max_Responders = $null
+        $RespondersFailed_values = New-Object System.Collections.Queue
         $ToSave_values = @()
         $Variance_values = New-Object System.Collections.Queue
         $Baseline_values = New-Object System.Collections.Queue
@@ -1656,39 +1693,15 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             # populate $RTT_values
             #-----------------------------
             $RTT_values.enqueue($ms)
-            $RespondersCnt_values.enqueue($_.bucket_ok_pings)
-            if ($RTT_values.count -eq 30) {
-                # Initialise all time min/max at whatever value we have
-                # at the 30th ping
-                $All_min_Responders = $_.bucket_ok_pings
-                $All_max_Responders = $_.bucket_ok_pings
-            } elseif ($RTT_values.count -gt 30) {
-                if ($_.bucket_ok_pings -lt $All_min_Responders) {
-                    $All_min_Responders = $_.bucket_ok_pings
-                }
-                if ($_.bucket_ok_pings -gt $All_max_Responders) {
-                    $All_max_Responders = $_.bucket_ok_pings
-                }
-            }
-            # ignore the first few pings (the sometimes bumpy start)
-            if (($RTT_values.count -eq 21) -and !$bumpy_start_cleanup_done) {
-                $bumpy_start_cleanup_done = $true
-                $RTT_values.clear()
-                $RTT_values.enqueue($ms)
-                $all_pings_cnt = 1
-                $all_lost_cnt  += [math]::min($all_lost_cnt,1)
-
-                $RespondersCnt_values.clear()
-                $RespondersCnt_values.enqueue($_.bucket_ok_pings)
-            }
-
+            $RespondersFailed_values.enqueue($_.bucket_pings - $_.bucket_ok_pings)
+			
             # keep $ms to a list of values that we will right to the ops....pingrec file
             if ($ms -eq 9999) {$ToSave_values += @(-1)} else {$ToSave_values += @($ms)}
 
             # keep at most $script:EffBarsThatFit measurements in RTT_values
             while ($RTT_values.count -gt $max_values_to_keep) {
                 $foo = $RTT_values.dequeue()
-                $foo = $RespondersCnt_values.dequeue()
+                $foo = $RespondersFailed_values.dequeue()
             }
 
             # other things to do with input
@@ -1728,12 +1741,12 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $last_hist_secs_values = @($RTT_values | select -Last ($AggregationSeconds * $PingsPerSec))
             $last_hist_secs_values_no_lost = @($RTT_values | ?{$_ -ne 9999} | select -Last ($AggregationSeconds * $PingsPerSec))
 
-            # populate the slow Responders graph
-            # How many times the number of responders was too low
-            # Too low = less than half of the all time maximum number of responders 
-            $values = @($RespondersCnt_values | `
+            # populate the slow Plenty of Failures graph
+            # Percent of samples were we had plenty of failures
+            # "Plenty" = more than 20% of hosts failed to respond
+            $values = @($RespondersFailed_values | `
                 select -Last ($AggregationSeconds * $PingsPerSec) )
-            $too_low_values = @($values | ?{$_ -lt ($PING_TARGET_LIST.count / 2)})
+			$too_low_values = @($values | ?{$_ -gt ($PING_TARGET_LIST.count * 0.2)})
             if ($too_low_values) {
                 $SlowResponders_values.enqueue(
                     [math]::round(100 * $too_low_values.count / $values.count,1))
