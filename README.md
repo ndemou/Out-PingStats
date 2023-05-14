@@ -16,20 +16,13 @@ Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming.
 
 ## Why would you want to use it? 
 
-#### You want to evaluate the quality of a connection for minutes or hours 
+#### You want a high certainty evaluation of your connection to the Internet 
 
-Out-PingStats can display several hours' worth of data in one screen, making it easy to assess the quality of a connection over time. It also saves every single round-trip time (RTT) in a `.pingrec` file in your `%TEMP%` folder.
+To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats is immune to problems of specific hosts because it pings 10 hosts in parallel. It also switches between many dozen hosts to avoid overwhelming any one of them, and implements a smart algorithm to combine the different response times into one meaningful value. If you see packet loss or bad response times, you can be certain that it's because of a problem in *your* infrastructure.
 
-#### You want to evaluate the uplink quality of a large network
+#### You want to visually evaluate the quality of a connection for many minutes or hours 
 
-When evaluating the uplink quality of a large network, people often use `ping google.com`, but sometimes, incoming packets to Google.com can be throttled, leading to packet loss. Out-PingStats is immune to this problem.
-
-<details>
-  <summary>More info</summary>
-  
-  Out-PingStats pings 10 hosts in parallel, implements a smart algorithm to combine the different response times into a meaningful value, and switches between many dozen hosts to avoid overwhelming any one of them. 
-  If you see packet loss or the response time jumping up, you know it's because of a real problem in your uplink and not because of a specific host having its own problems or throttling your pings.
-</details>
+Out-PingStats can nicely display several hours' worth of data in one screen, making it easy to assess the long term quality of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
 
 #### You love your shell, but also prefer graphs to long lists of numbers.
 
