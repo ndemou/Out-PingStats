@@ -32,21 +32,26 @@ Well then, Out-PingStats is for you!
 
 #### Step 1. Install depedencies 
 
-    # Run this from an admin PowerShell
+Run this from an **admin PowerShell**
+
     Install-Module -Name ThreadJob 
     
-#### Step 2. Try it out
+#### Step 2. Download 
+
+    cd '$Env:USERPROFILE'
+    iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
+
+#### Step 3. Run
 
    1. Quick'n'dirty test of your internet connection:
 
-           powershell -exec bypass -c ". {iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1}|iex"
+           cd '$Env:USERPROFILE
+           powershell -exec bypass -c ".\Out-PingStats.ps1"
     
-   2. Quick'n'dirty test of the connection to a specific host in your LAN:
-    
-           # download
-           powershell -exec bypass -c ". {cd '$Env:USERPROFILE'; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1}"
-           # run
-           powershell -exec bypass -c "cd '$Env:USERPROFILE'; .\Out-PingStats.ps1 -PingsPerSec 4 $(read-host 'Enter IP to ping')"
+   3. Quick'n'dirty test of the connection to a specific host in your LAN:
+
+           cd '$Env:USERPROFILE
+           powershell -exec bypass -c ".\Out-PingStats.ps1 192.168.0.1"
 
 You will get good enough graphs without configuring anything but they
 will probably not be the highest quality possible. 
