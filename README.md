@@ -162,16 +162,6 @@ minute starting with the timestamp `hhmm:`. After the timestamp follows one
 character per measurement. The character is `[char]($RTT+34)`
 (e.g. `A` for 31msec, `B` for 32msec, etc). For lost pings you get an `!` instead.
 
-### Histogram examples
-
-#### Histogram of a not so good wifi connection
-
-![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
-
-#### Histogram of a good wifi connection
-
-![image](https://user-images.githubusercontent.com/4411400/204652036-79f1b56c-1866-4508-b6af-0e8beddc1e5a.png)
-
 ## Parameters
     -PingsPerSec
 
@@ -241,3 +231,21 @@ dot sourcing this program and running the helper function `helper_find_pingable_
 (it needs a few minutes to spit out the list). 
 Then look at the top of the code for the declaration of `$PING_TARGET_LIST = ` 
 and replace its value with the list you got.
+
+## Examples of Graphs
+
+### Histogram of a not so good wifi connection
+
+![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
+
+### Histogram of a better wifi connection
+
+![image](https://user-images.githubusercontent.com/4411400/204652036-79f1b56c-1866-4508-b6af-0e8beddc1e5a.png)
+
+### Histogram of a very good wifi connection
+
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/b81b872b-0981-4baa-93a3-22ceddec64e2)
+
+### Long term behaviour of a 4G connection
+
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/08671c38-29ce-4fe3-afe7-56a3ccd2c2b5)
