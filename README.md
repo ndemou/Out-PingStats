@@ -236,7 +236,7 @@ and replace its value with the list you got.
 
 ### Histogram of a not so good wifi connection
 
-![image](https://user-images.githubusercontent.com/4411400/204652000-c71b4ccd-2cda-4458-a846-f122332446b0.png)
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/9aa40240-1bca-4dc9-9ed1-3918ed791e9e)
 
 ### Histogram of a better wifi connection
 
