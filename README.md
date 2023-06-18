@@ -24,6 +24,8 @@ To evaluate the uplink quality you may `ping google.com` or some other well know
 
 Out-PingStats can nicely display several hours' worth of data in one screen, making it easy to assess the long term quality of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
 
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/08671c38-29ce-4fe3-afe7-56a3ccd2c2b5)
+
 #### You love your shell, but also prefer graphs to long lists of numbers.
 
 Well then, Out-PingStats is for you!
@@ -51,7 +53,7 @@ Run this from an **admin PowerShell**
    3. Quick'n'dirty test of the connection to a specific host in your LAN:
 
            cd '$Env:USERPROFILE
-           powershell -exec bypass -c ".\Out-PingStats.ps1 192.168.0.1"
+           powershell -exec bypass -c ".\Out-PingStats.ps1 10.1.1.1"
 
 You will get good enough graphs without configuring anything but they
 will probably not be the highest quality possible. 
@@ -62,8 +64,11 @@ Read below about selecting a font that will display the best graphs possible.
     # To test Internet quality 
     Out-PingStats   
     
-    # To test network connection to 10.1.1.1 by pinging at 4 pings per second:
-    Out-PingStats -PingsPerSec 4 10.1.1.1 
+    # To test network connection to 10.1.1.1
+    Out-PingStats 10.1.1.1 
+
+    # To test network connection to 10.1.1.1 by pinging at 20 pings per second:
+    Out-PingStats -PingsPerSec 20 10.1.1.1 
 
 If you want to evaluate your connection to a specific host 
 (e.g. when you want to test your ethernet/WIFI quality)
