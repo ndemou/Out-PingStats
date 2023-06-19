@@ -40,19 +40,19 @@ Run this from an **admin PowerShell**
     
 #### Step 2. Download 
 
-    cd '$Env:USERPROFILE'
+    cd $Env:USERPROFILE
     iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
 
 #### Step 3. Run
 
    1. Quick'n'dirty test of your internet connection:
 
-           cd '$Env:USERPROFILE
+           cd $Env:USERPROFILE
            powershell -exec bypass -c ".\Out-PingStats.ps1"
     
    3. Quick'n'dirty test of the connection to a specific host in your LAN:
 
-           cd '$Env:USERPROFILE
+           cd $Env:USERPROFILE
            powershell -exec bypass -c ".\Out-PingStats.ps1 10.1.1.1"
 
 You will get good enough graphs without configuring anything but they
