@@ -1,67 +1,100 @@
 <#
-v0.23.6
-    
-TODO: Some graphs (e.g. variance) set y-axis max to MAX(measurements)
-      If MAX/p95 > 5 set y-axis max to p95 instead
-TODO: I get this error when wifi disconnects for several seconds:
-		Format-PingTimes : Cannot index into a null array.
-		At C:\Users\NickDemou\OneDrive - enLogic\ndemou\Out-PingStats.ps1:2161 char:12
-		+          | Format-PingTimes `
-		+            ~~~~~~~~~~~~~~~~~~
+    v0.24.0
 
-TODO: I need a beacon ping to 127.0.0.1 to run at the same rate as the main pings
-      Main loop will use replies from localhost as a reference "sampling clock".
-	  This is usefull because now that timeout is larger than the ping rate
-	  there can be silence periods where I will simple get no data back from 
-	  Start-MultiPings. During these silent periods localhost will respond
-	  and main-loop will be able to detect Start-MultiPings timeouts
-	  I could do it be accounting for past time (e.g. if Nsecs passed since last
-	  data from Start-MultiPings) but the beacon technic is handy when we run
-	  on a laptop that goes to sleep.
+v0.24.0: 
+- Stand alone code with no depedencies! (droped the ThreadJob module depedency)
+- Brand new parallel pinging strategy 
+  I only ping 4 well known hosts (all aces, all eights), using ping.exe
+- Displays p95(RTT) that everyone understands instead of baseline and variance 
+- Removed some dead code (e.g. for DNS querying)
 
-TODO: Hide the graph of "LAST Count of responders" if min=max (keep showing the
-      title: LAST Count of responders,  min=10, max=10, last=10, All time min=10
-	  Do the same for %TIME with PLENTY OF FAILURES if p95<1 for all values after the
-	  first two (which we ignore as transitional).
-	  %TIME with PLENTY OF FAILURES, min=0%, p95=0.5%, max=1%, last=0%
-	  Do the same for RTT BASELINE(min) if min/max >80%
-	  RTT BASELINE(min), min=10, p95=11, max=11, last=11 (ms)
-	  Do the same for Loss% if max=0%
-	  
-TODO: This mode of operation and displaying will be wonderful for detecting whether problems 
-      lie in your LAN, your router or your ISP
+TODO: 
+	***IMPORTANT TODO*** 
+	When using parallel pinging I must calculate effective RTTs instead of 
+	using the real RTTs. Look below for this comment:
+	"TODO: convert real RTTs to effective RTTs before adding record to bucket"
+	
+	-------------------
+	During default ping Internet I need an extra job to ping the default GW 
+	And since I do, display graphs for the default GW also 
+	(hide the p95(RTT) graph if max is less than 2msec or <1/5*min(p95(RTT for Internet hosts))
+	(hide the loss graph if max(loss) is 0% or <1/10*mean(loss of internet hosts))
+	(hide the jitter graph if max(jitter) is less than 5ms or <1/10*mean(jitter of internet hosts))
+	
+	-------------------
+	I visualize these cases in the real time graph at the TOP
+		a column of red N's means no Networking; no replies from localhost, only beacon lines are returned
+		a column of red L's means no LAN; no replies from default GW 
+		a column of red I's means no Internet; no replies from any of the Internet hosts
 
-     RTT VARIANCE(p95-min), per 2' for 300', min=0, max=206, last=17 (ms)
+	-------------------	
+	I need a smarter way to set the y-max for most graphs so
+      that when running the script from multiple windows or even from
+      multiple PCs I get comparable results
+
+     After the first period (typicaly 120") we set: 
+     Real time RTT
+        We use logarithmic(base 2) scale for Y. We may use one of these:
+            30,60,120 or 120,240,480 or 480,960,1920
+        We select the scale which has it's 1/3 point closer to min(RTT) 
+        The color of the bar is green, cyam, orange, yellow, red
+        based on how far from a good RTT it is
+        Good RTT is either <=10 or <=20 or <=40msec depending on the 
+        min(RTT) of the first 20pings 
+        We select Good RTT as the number bigger than min(RTT)*1.2 from 10,20,40,80
+        The user may force it with -MaxGoodRtt
+        Lost packets should be all red with yellow stars in them
+     p98(RTT) 
+        We use logarithmic(base 2) scale for Y. We may use one of these:
+            30,60,120 or 120,240,480 or 480,960,1920
+        (30,60,120 means that the first 1/3 of the graph is at 30msec, 
+            the 2nd at 60msec and the 3rd at 120)
+        We select the scale which has it's 1/3 point closer to min(RTT) 
+        Coloring is as for Real time RTT
+     Jitter
+        Should also have coloring (green to red) to show how good/bad VoIP will be
+
+	-------------------	
+     Per period stats must be recorded to a simple text file with this format (note the pading):
+        Out-PingStats Statistics
+        Destination(s) = 1.1.1.1, 1.1.1.2, 8.8.8.8, 8.8.4.4 
+        m=minimum RTT(ms), p=98th percentile of RTT(ms), j=half the two-way jitter(ms), L=loss(%)
+        2023/06/01 10:00, m=  7, p= 15, j= 12, L=  0.8
+        2023/06/01 10:02, m=  7, p= 15, j= 12, L=  0.8
+     Per hour stats are also output to a text file. Same layout and contains the max value
+        of the hour.
+
+	-------------------
+TODO: This mode of operation and display will be wonderful for detecting whether problems 
+      lie from your PC to your router or from your router to the Internet 
+
+     P95, per 2' for 300', min=0, max=206, last=17 (ms)
  300|_________________________________________________________________________________________
     |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
    0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
               `^Internet`         `         `         `         `         `         `
- 300|_________________________________________________________________________________________
-    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
-   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
-              `^ISP     `         `         `         `         `         `         `
- 300|_________________________________________________________________________________________
-    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
-   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
+L300|_________________________________________________________________________________________
+A   |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
+N  0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
               `^LAN     `         `         `         `         `         `         `
      LOSS%, per 2' for 300', min=0%, p95=23.33%, max=25.83%, last=0.833%
   30|______▃_________▃_________▃____________________▃______________________________▅__________
     |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
    0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
               `^Internet`         `         `         `         `         `         `
-  30|______▃_________▃_________▃____________________▃______________________________▅__________
-    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
-   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
-              `^ISP     `         `         `         `         `         `         `
-  30|______▃_________▃_________▃____________________▃______________________________▅__________
-    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
-   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
+  30|_________________________________________________________________________________________
+    |______▃_________▃_________▃____________________▃_________▃_________▅__________▃__________
+   0|______█_________█_________█_________▃▃_________█_____▁__▁█_________██_________█_________▁
               `^LAN     `         `         `         `         `         `         `
      ONE-WAY JITTER, per 2' for 300', min=0, p95=33, max=92, last=8 (ms)
   30|_____▂▲____________▂_______________________▲___▲________▲▲___█__▂_____________▆__________
     |_▂__▁██▃__▆_▅___▅__█______▃_______▃_____█_▄█__▃█_▁__▅▂__██__▅█__█_▅▆_______▃__█__________
    0|▃█▃▁████▅▁█▆█▅▂▂█▃_█▆▂▃▅▂▅█▅▆▆▁▆▃▂█▇▅█▄▆█▇██▃███▆█▆▃██▂███▆▆██_▄█▂██▄▄▆▄▂▅▂█▃▁█▂▃▄▅▃▂▆▁▆▆
-              `ISP      `         `         `         `         `         `         `
+              `^Internet `         `         `         `         `         `         `
+  30|_____▂▲____________▂_______________________▲___▲________▲▲___█__▂_____________▆__________
+    |_▂__▁██▃__▆_▅___▅__█______▃_______▃_____█_▄█__▃█_▁__▅▂__██__▅█__█_▅▆_______▃__█__________
+   0|▃█▃▁████▅▁█▆█▅▂▂█▃_█▆▂▃▅▂▅█▅▆▆▁▆▃▂█▇▅█▄▆█▇██▃███▆█▆▃██▂███▆▆██_▄█▂██▄▄▆▄▂▅▂█▃▁█▂▃▄▅▃▂▆▁▆▆
+              `^LAN     `         `         `         `         `         `         `
               
 TODO: Hide histogram if console height is not enough
 TODO: Print clock time every 10 or 20 vertical bars
@@ -133,6 +166,24 @@ TODO: I could probably add a heatmap with 2 periods per character.
     from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
 #>
 
+<# General notes
+
+WHY DO I ONLY PING ALL ACES, ALL EIGHTS
+      Hosts like all aces and all eights had 0.8% packet loss in my tests, 
+	  so pinging just the 4 well known IPs 1.1.1.1, 1.1.1.2, 8.8.8.8, 8.8.4.4 is more than enough to avoid false negatives
+      >99.999% of the time 
+
+BEACON PING
+    I use a beacon ping to 127.0.0.1 to run at the same rate as the main pings
+      Main loop uses replies from localhost as a reference "sampling clock".
+	  This is usefull because ping.exe timeout(1.5sec) is larger than the ping period (every 1sec)
+	  there can be silence periods where I will simple get no data back from 
+	  parallel Multi Pings. During these silent periods localhost will respond
+	  and main-loop will be able to detect timeouts
+	  It will also be handy when we run on a laptop that goes to sleep.
+	  where localhost will also stop responding 
+
+#>
 <# Re: targets for pinging 
    ===========================================
    THE BASIC FACTS
@@ -154,57 +205,6 @@ TODO: I could probably add a heatmap with 2 periods per character.
    some host of some line is pinged in parallel with a random
    host of another line, and some random host of another line
    and so on...
-#>
-
-
-$PING_TARGET_LIST = @(`
-    @('bvs.com','cm.com','md.com','ani.com','btq.com','ads.com','ccm.com','aip.com','cbv.com','bqs.com','pq.com','apr.com','tn.com','btc.com','abt.com','zb.com'),
-    @('adu.com','aau.com','eb.com','alj.com','ao.com','afg.com','ef.com','aex.com','aje.com','aae.com','bts.com','cgr.com','arv.com','cdg.com','zl.com','atl.com'),
-    @('akc.com','av.com','amf.com','akk.com','tu.com','acz.com','bom.com','rv.com','aok.com','ci.com','anf.com','amh.com','byl.com','aaw.com','vw.com','car.com'),
-    @('aue.com','cdj.com','ago.com','yg.com','bpj.com','ix.com','bzb.com','bov.com','wg.com','aqb.com','mx.com','apm.com','bpn.com','azd.com','bfa.com','jy.com'),
-    @('ky.com','alp.com','aoi.com','wz.com','apu.com','no.com','aop.com','akx.com','bo.com','ada.com','pt.com','bmf.com','ahr.com','atr.com','rl.com','ka.com'),
-    @('agl.com','uj.com','bwo.com','brc.com','mu.com','cg.com','cfk.com','kj.com','ceb.com','bwb.com','box.com','cdq.com','adk.com','bwz.com','cdp.com','ww.com'),
-    @('bwv.com','cbm.com','ov.com','wy.com','lg.com','abl.com','ry.com','kw.com','arq.com','px.com','agt.com','bum.com','awl.com','bv.com','ej.com','xi.com'),
-    @('aic.com','byg.com','bak.com','buq.com','mz.com','hr.com','bns.com','nj.com','arb.com','cby.com','abc.com','ev.com','boz.com','aqx.com','bgt.com','axp.com'),   
-    @('es.com','bmg.com','ck.com','btx.com','cds.com','cgt.com','ft.com','cb.com','cbs.com','pu.com','acc.com','cgg.com','byj.com','agu.com','qa.com','vy.com'),
-    @('cfv.com','avd.com','mj.com','qp.com','bxa.com','ajl.com','bzz.com','bjj.com','alc.com','apg.com','cd.com','apl.com','bwn.com','jm.com','agh.com','and.com')
-)
-<#
-
-  Some pingable Hosts 
-  --------------------------------
-    @('si.com','bru.com'),
-    @('pge.com','lgs.com','qeb.com','qka.com','cjw3301.github.io','pvk.com','qad.com','qki.com'),
-    @('nt.com','ccc.com','abn.com','apd.com','cag.com','bvm.com','zg.com','gq.com'),
-    @('og.com','ib.com','ahj.com','bvh.com','qz.com','wv.com','bg.com','bae.com'),
-    @('gpv.com','qes.com','pfl.com','nso.com','jsv.com','nmb.com','ixl.com','pff.com'),
-    @('qdt.com','hex.com','phi.com','nns.com','hox.com','kdp.com','inj.com','qew.com'),
-    @('lge.com','mdp.com','mfg.com','hvq.com','due.com','pva.com','joc.com','qhu.com'),
-    @('nkd.com','par.com','dji.com','pbx.com','max.com','obn.com','qhs.com','gsk.com'),
-    @('psl.com','mlb.com','phd.com','qcy.com','pcl.com','ctx.com','qil.com','mfm.com'),
-    @('gcn.com','pia.com','kds.com','puj.com','pgt.com','csg.com','hio.com','nts.com'),
-    @('aas.com','apf.com','akl.com','oy.com','cdl.com','aqs.com','alm.com','cgv.com' ),
-    @('pkw.com','jog.com','ign.com','pop.com','qkc.com','pkd.com','mni.com','gfh.com'),
-    @('acx.com','tt.com','xx.com','il.com','pp.com','bus.com','wo.com','agr.com'     ), 
-    @('cec.com','yv.com','al.com','acn.com','hc.com','zf.com','aks.com','um.com'     ), 
-    @('ale.com','gf.com','apn.com','bwt.com','alr.com','bvr.com','vp.com','ccn.com'  ), 
-    @('uq.com','dx.com','vi.com','amq.com','amw.com','bc.com','bqh.com','ali.com'    ), 
-    @('ait.com','ccs.com','bdu.com','atm.com','bwf.com','vq.com','bud.com','nl.com'  ), 
-    @('agv.com','jw.com','bpd.com','bxg.com','aij.com','xs.com','bon.com','ccu.com'  ), 
-    @('byn.com','dq.com','abe.com','btr.com','bvk.com','bi.com','ei.com','afw.com'   ), 
-    @('anc.com','ach.com','ake.com','atz.com','ha.com','cfu.com','qk.com','afi.com'  ), 
-    @('bsw.com','bkt.com','cch.com','afn.com','aho.com','abd.com','bnq.com','dz.com' ), 
-    @('qat.com','mod.com','djx.com','doc.com','psc.com','kiq.com','ilm.com','pzf.com')
-
-
-  Well known DNS servers
-  ---------------------------
-    @('1.0.0.1'        , '1.1.1.1'        , '8.8.8.8'        , '8.8.4.4',        '208.67.222.222' , '208.67.220.220' , '4.2.2.2'        , '4.2.2.1'),
-    @('9.9.9.9'        , '149.112.112.112', '8.26.56.26'     , '8.20.247.20'    ,'185.225.168.168', '185.228.169.168', '76.76.19.19'    , '76.223.122.150' ),
-    @('176.103.130.130', '176.103.130.131', '64.6.64.6'      , '64.6.65.6'      ,'216.87.84.211',   '23.90.4.6',       '77.88.8.8',       '77.88.8.1'      ),
-    @(  '209.244.0.3',   '209.244.0.4',     '216.146.35.35',   '216.146.36.36'  ,'216.146.35.35',   '216.146.36.36',   '91.239.100.100',  '89.233.43.71'   ),
-    @('156.154.70.5',    '156.157.71.5',    '81.218.119.11',   '209.88.198.133' ,'195.46.39.39',    '195.46.39.40',    '74.82.42.42',     '84.200.69.80'   )
-
 #>
 
 # Re: colored printing
@@ -306,529 +306,36 @@ $DebugMode=0
 $script:AggPeriodSeconds = 0
 $script:status = ""
 
-# Collect some basic statics about each host
-$HOST_STATS_ATTEMPTS = @{}
-$HOST_STATS_FAILURES = @{}
-$HOST_STATS_MIN_REAL_RTT = @{}
-
-$CodeOfDnsQuery = @'
-Function Start-DNSQuery {
-    # Allows custom interval with msec accuracy.
-    # Will try hard to send 1000/$Interval pings per second
-    # by adjusting the delay between two consequtive pings.
-    # NOTE that in case of failure, it returns 999
-    Param(
-        [string]$target="1.0.0.1",
-        [int]$Interval = 1000,
-        [int]$TimeOut = 3000
-    )
-
-    $ping_count = 0
-    $ts_first_ping = (Get-Date)
-    while ($True) {
-        $sent_at = (Get-Date)
-        # $sent_at.ticks / 10000 milliseconds counter
-
-        try {
-            $status = 'Failed'
-            $output=(Resolve-DnsName google.com -type A -Server $target -DnsOnly -NoHostsFile -QuickTimeout)
-            if ($output.TTL -is [uint32]) {$status = 'Success'}
-            $debug = ''
-        } catch {
-            $status = $Error[0].Exception.GetType().FullName
-            $debug = $status
-        }
-
-        $ts_end = (Get-Date)
-        $ping_count += 1
-        if ($status -eq 'Success') {
-            $RTT = [math]::max(1, [int](($ts_end.ticks - $sent_at.ticks)/10000))
-        } else {
-            $RTT = 9999
-        }
-
-        if ($ping_count -eq 1) {
-            $total_elapsed_ms = $RTT
-            $expected_elapsed_ms = 0
-            $diff = $RTT
-            $ts_first_ping = $sent_at
-        } else {
-            $total_elapsed_ms = [int](($ts_end.ticks - $ts_first_ping.ticks)/10000)
-            $expected_elapsed_ms = [int](($ping_count-1) * $Interval)
-            $diff = $total_elapsed_ms - $expected_elapsed_ms
-        }
-
-        $sleep_ms = [math]::max(0, $Interval - $diff)
-        # return this:
-        [PSCustomObject]@{`
-            sent_at = $sent_at; `
-            Status = $status; `
-            ts_start = [int](($sent_at.ticks - $ts_first_ping.ticks)/10000); `
-            ts_end = [int](($ts_end.ticks - $ts_first_ping.ticks)/10000); `
-            RTT2 = [math]::round((($ts_end.ticks - $sent_at.ticks)/10000),1); `
-            RTT = $RTT; `
-            ping_count = $ping_count; `
-            target = $target; `
-            group_id = $target; `
-            debug = $debug
-        }
-        if ($sleep_ms -gt 0) {start-sleep -Milliseconds $sleep_ms}
-
-    }
-}
-'@
-
-$CodeOfMultiDnsQueries = @'
-Function Start-MultiDnsQueries {
-    # Will try hard to send pings at exact times
-    # every second +0msec for 1 ping/sec
-    # or every sec +0msec and +500msec for 2 pings/sec
-    # NOTE that in case of failure, it does not return 0 but
-    # the elapsed time
-    Param(
-        [array]$target_list= @('8.8.8.8', '208.67.222.222', `
-            '1.1.1.1', '4.2.2.2', '4.2.2.1', '8.8.4.4', `
-            '208.67.220.220', '1.0.0.1'),
-        [int]$TimeOut = 3000,
-        [switch]$TwicePerSec = $False
-    )
-
-    function get_median($series){
-        # see function notes on main code
-        $sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
-        if ($sorted) {
-            [int]$sorted[[int]($sorted.count/2)]
-        } else {
-            9999
-        }
-    }
-    function get_baseline($Baseline, $RTT_list){
-        # see function notes on main code
-        $old_Baseline = $Baseline
-        $calculated_baseline_now = ($RTT_list | ?{$_ -ne 9999} | measure -Minimum).Minimum
-        if ($Baseline -eq $null) {
-            # Initial value
-            $Baseline = $calculated_baseline_now
-        } elseif ([math]::abs($calculated_baseline_now - $old_Baseline) -gt 50) {
-            # Difference too big, we are forced to make a big jump :-(
-            Write-Verbose "get_baseline was forced to jump from $Baseline to $calculated_baseline_now"
-            $Baseline = $calculated_baseline_now
-        } elseif ($calculated_baseline_now -gt $old_Baseline) {
-            # we will jump by +1...4 msec
-            $Baseline += [math]::Ceiling(($calculated_baseline_now - $old_Baseline)/10)
-        } elseif ($calculated_baseline_now -lt $old_Baseline) {
-            # we will jump by -1...4 msec
-            $Baseline -= [math]::Ceiling(($old_Baseline - $calculated_baseline_now)/10)
-        }
-        return $Baseline
-    }
-
-    # create a hash table to hold the last N RTTs of each host
-    # in order to compute the average of mins which will allow us
-    # to "normalize" the different groups close to a common baseline
-    $max_values_to_keep = 40
-    $last_RTTs = @{}
-    $failures = @{}
-	$attempts = @{} # how many pings we have sent
-    $fail_score = @{}
-    $Median_of_last_RTTs = @{}
-    $Baseline = $null
-    $target_list | %{
-        $last_RTTs[$_] = New-Object System.Collections.Queue
-        $last_RTTs[$_].enqueue(9999)
-        $Median_of_last_RTTs[$_] = 99
-        $failures[$_] = 0
-		$attempts[$_] = 0
-        $fail_score[$_] = 0
-    }
-
-    if ($TwicePerSec) {$PerSec=2} else {$PerSec=1}
-    $Interval = 1000 / $PerSec
-    $ping_count = 0
-    $target_counter = 0
-    $cur_msec = (Get-Date).millisecond
-    if ($cur_msec -gt 0) {
-        start-sleep -Milliseconds (1000-$cur_msec+8) # align at 0msec
-        # without +8 sometimes the sleep is 1-5 msec less than needed
-        # and we sent at 995-999msec
-    }
-
-    while ($True) {
-        $debug_msg = ''
-        if ($target_list.length -eq 1) {
-            $target = $target_list[0]
-        } else {
-            # cycle over available targets
-            $target = $target_list[$target_counter % $target_list.length]
-            # If a target has 3 more consequtive failures than the average then 
-			# it has 9/70 chance of been skiped.
-            # If it has >=9 more consequtive failures than the average it has 69/70 chance
-            # NOTE: strangely -maximum 92 gives values that are at most 91
-			$relative_fail_score = $fail_score[$target] - [int]($fail_score.values | measure-object -Average).Average
-            while ($relative_fail_score*10 -ge (get-random -minimum 21 -maximum 92)) {
-                $target_counter += 1
-                $debug_msg += "$($target) skiped "
-                $target = $target_list[$target_counter % $target_list.length]
-            }
-        }
-
-        $sent_at = (Get-Date)
-        # $sent_at.ticks / 10000 milliseconds counter
-
-        try {
-            $status = 'Failed'
-            write-verbose "Trying $target"
-            $output=(Resolve-DnsName google.com -type A -Server $target -DnsOnly -NoHostsFile -QuickTimeout  -erroraction 'silentlycontinue')
-            if ($output.TTL -is [uint32]) {$status = 'Success'}
-            $debug = ''
-            $ts_end = (Get-Date)
-            if ($status -eq 'Success') {
-                $Real_RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
-                if (($ts_end.ticks - $sent_at.ticks) -eq 0) {
-                    # not sure why but I often get 0 ticks diff!
-                    # in that case I ignore it and /normalize/ the value to the most recent min
-                    $Real_RTT = $Median_of_last_RTTs[$target]
-                } elseif ($Real_RTT -gt $Interval) {
-                    # RTT is so big that we can as well consider it a failure
-                    # (If we don't we create a mess in the main loop where
-                    # some late responses are interleaved between good responses)
-                    # (Resolve-DnsName does offer a -TimeOut option,
-                    # QuickTimeout seems to allow about 7-8sec timeout which is huge
-                    # for our purpose)
-                    $Real_RTT  = 9999
-                    $status = 'Failed'
-                }
-            } else {
-                $Real_RTT = 9999
-            }
-        } catch {
-            $status = $Error[0].Exception.GetType().FullName
-            $debug = $status
-            $ts_end = (Get-Date)
-            $Real_RTT = 9999
-        }
-
-        $ping_count += 1
-		$attempts[$target] = $attempts[$target] + 1
-        if ($status -ne 'Success') {
-            # failed ping
-
-            $fail_score[$target] = [math]::min(9, $fail_score[$target]+1) # don't go over 9
-            $failures[$target] = $failures[$target] + 1
-            $debug_msg += "$($target): $($fail_score[$target]) con.fail. "
-        } else {
-            # succesful ping
-            if (($last_RTTs[$target].count -eq 1) -and ($last_RTTs[$target].Peek() -eq 0)) {
-                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy value
-            }
-            $fail_score[$target] = [math]::max(0, $fail_score[$target]-1)
-            $last_RTTs[$target].enqueue($Real_RTT)
-            if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
-            $Median_of_last_RTTs[$target] = get_median $last_RTTs[$target]
-            # the following line will force get_baseline to always recalculate 
-            # the baseline during the first cycle of pings 
-            if ($ping_count -le $target_list.count) {$Baseline = $null} 
-            $Baseline = (get_baseline $Baseline $Median_of_last_RTTs.values)
-        }
-
-        if ($ping_count -le 10) {
-            $effective_RTT = $Real_RTT
-        } else {
-            if ($Real_RTT -eq 9999) {
-                $effective_RTT = 9999
-            } else {
-                $effective_RTT = [math]::max($Baseline, $Real_RTT + ($Baseline - $Median_of_last_RTTs[$target]))
-            }
-        }
-        # return this:
-        [PSCustomObject]@{`
-            sent_at = $sent_at; `
-            Status = $status.tostring(); `
-            target = $target; `
-            ping_count = $ping_count; `
-            RTT = $effective_RTT; `
-            dt = $Real_RTT - $effective_RTT; `
-            real_RTT = $Real_RTT; `
-            Median_of_last_RTTs = $Median_of_last_RTTs[$target]; `
-            Baseline = $Baseline; `
-            failures = $failures[$target]; `
-			attempts = $attempts[$target]; `
-            group_id = $target_list[0] + $target_list[1]; `
-            debug = $debug_msg
-        }
-        # sleep until msec =0 (or 500 for $PerSec=2)
-        $cur_msec = (Get-Date).millisecond
-        if ($cur_msec -gt 500) {
-            $sleep_msec = (1000-$cur_msec)
-        } else {
-            if ($PerSec -eq 2) {
-                $sleep_msec = (500-$cur_msec)
-            } else {
-                $sleep_msec = (1000-$cur_msec)
-            }
-        }
-        write-verbose "cur_msec=$cur_msec`t`tsleeping for $sleep_msec"
-        start-sleep -Milliseconds ($sleep_msec+8)
-        # see above for +8
-
-        $target_counter += 1
-    }
-}
-'@
 
 <#
 #################################################################################
 # The code of Start-MultiPings is very close to this quick'n'dirty working code:
 #################################################################################
 
-$hosts = @('cbv.com','bwv.com','aje.com','aok.com','bvs.com','bsw.com','aue.com','akc.com','arq.com','ceb.com','cbs.com','alc.com','cfv.com','hi.com')
-$hosts | %{
-  Start-ThreadJob -ThrottleLimit 400 -ArgumentList $_ -ScriptBlock {
-    $hostn = $args[0]
-    while ($true) {ping -t $hostn | sls -NotMatch "time=" | %{ echo "$(get-date -Format "hh:mm:ss" ) $hostn $_"}; sleep 1}
-}}; while ($true) {get-job | receive-job; sleep 1}
+echo "$(get-date -Format "hh:mm:ss") STARTING";
+Start-Job -ScriptBlock {           $hostn="127.0.0.1"; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+Start-Job -ScriptBlock {sleep 0.5; $hostn="127.0.0.1"; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+Start-Job -ScriptBlock {           $hostn="1.1.1.1"  ; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+Start-Job -ScriptBlock {sleep 0.1; $hostn="1.1.1.2"  ; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+Start-Job -ScriptBlock {sleep 0.2; $hostn="8.8.8.8"  ; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+Start-Job -ScriptBlock {sleep 0.3; $hostn="8.8.4.4"  ; while ($true) {ping -t $hostn | sls "time[<=]" | %{ echo "$(get-date -UFormat %s ) $hostn $_"}}}
+echo "$(get-date -Format "hh:mm:ss") MONITORING"; while ($true) {get-job | receive-job; sleep 1}
 
 #>
 $CodeOfMultiPings = @'
-Function Start-MultiPings {
-    # Will try hard to send pings at exact times
-    # every second +0msec for 1 ping/sec
-    # or every sec +0msec and +500msec for 2 pings/sec
-    # NOTE that in case of failure, it does not return 0 but
-    # the elapsed time
-    Param(
-        [array]$target_list= @('8.8.8.8', '208.67.222.222', `
-            '1.1.1.1', '4.2.2.2', '4.2.2.1', '8.8.4.4', `
-            '208.67.220.220', '1.0.0.1'),
-        [int]$TimeOut = 3000,
-        [switch]$TwicePerSec = $False
-    )
-
-    function get_median($series){
-        # see function notes on main code
-        $sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
-        if ($sorted) {
-            [int]$sorted[[int]($sorted.count/2)]
-        } else {
-            9999
-        }
-    }
-    function get_baseline($Baseline, $RTT_list){
-        # see function notes on main code
-        $old_Baseline = $Baseline
-        $calculated_baseline_now = ($RTT_list | ?{$_ -ne 9999} | measure -Minimum).Minimum
-        if ($Baseline -eq $null) {
-            # Initial value
-            $Baseline = $calculated_baseline_now
-        } elseif ([math]::abs($calculated_baseline_now - $old_Baseline) -gt 50) {
-            # Difference too big, we are forced to make a big jump :-(
-            Write-Verbose "get_baseline was forced to jump from $Baseline to $calculated_baseline_now"
-            $Baseline = $calculated_baseline_now
-        } elseif ($calculated_baseline_now -gt $old_Baseline) {
-            # we will jump by +1...4 msec
-            $Baseline += [math]::Ceiling(($calculated_baseline_now - $old_Baseline)/10)
-        } elseif ($calculated_baseline_now -lt $old_Baseline) {
-            # we will jump by -1...4 msec
-            $Baseline -= [math]::Ceiling(($old_Baseline - $calculated_baseline_now)/10)
-        }
-        return $Baseline
-    }
-
-	# we will use this object to send pings 
-	$Ping = [System.Net.NetworkInformation.Ping]::New()
-
-	$attempts = @{} # how many pings we have sent
-    $failures = @{} # how many pings failed
-    $fail_score = @{} 
-	# Regarding $fail_score: 
-	# 0...8 = last N CONSEQUTIVE attempts failed 
-	# 9     = 9 OR MORE of the last N CONSEQUTIVE attempts failed
-
-    # We keep the last N RTTs of each host
-    # in order to compute the average of mins which will allow us
-    # to "normalize" the different groups close to a common baseline
-    $max_values_to_keep = 40
-    $last_RTTs = @{}
-    $Median_of_last_RTTs = @{}
-	$Address = @{}
-    $Baseline = $null
-    $target_list | %{
-        $last_RTTs[$_] = New-Object System.Collections.Queue
-        $last_RTTs[$_].enqueue(9999)
-        $Median_of_last_RTTs[$_] = 9999
-        $fail_score[$_] = 0
-        $failures[$_] = 0
-		$attempts[$_] = 0
-		$Address[$_] = ""
-    }
-
-    if ($TwicePerSec) {$PerSec=2} else {$PerSec=1}
-    $Interval = 1000 / $PerSec
-    $ping_count = 0
-    $target_counter = 0
-    $cur_msec = (Get-Date).millisecond
-    if ($cur_msec -gt 0) {
-        start-sleep -Milliseconds (1000-$cur_msec+8) # align at 0msec
-    }
-
-	# Make one attempt to resolve the IPs of all targets before 
-	# starting to ping them (we will keep retring those that failed
-	# as we go)
-	$target_list | %{
-		$target = $_
-		try {
-			# resolve IP address of $target
-			$Address[$target] = [System.Net.Dns]::GetHostAddresses($target)[0].IPAddressToString
-		} catch {}
-	}
-<#
-	# Make one attempt to ping every target  (in parallel)
-	$target_list | %{
-		Start-ThreadJob -ThrottleLimit 20 -ArgumentList $_,$Address[$_] -ScriptBlock {
-			$Ping = [System.Net.NetworkInformation.Ping]::New()
-			$wait = (Get-Random -min 0 -max 0.4)
-			echo "$($args[0]) $($args[1]) waiting for $wait sec before starting"
-			sleep $wait
-			try {
-				$ret = $Ping.Send($args[1], 3000)
-				echo "$($args[0]) $($ret.Status)"
-			} catch {
-				echo "$($args[0]) Failed"
-			}
-		} | out-null
-	}
-	# wait for all pings to terminate 
-	$elapsed = 0 
-	$wait_timeout = 4
-	while (($elapsed -le $wait_timeout) -and ((get-job -State 'Running') -or (get-job -State 'NotStarted'))) {
-		write-verbose "$elapsed secs..."
-		sleep -Milliseconds 200
-		$elapsed += 0.2
-		get-job | receive-job | %{write-verbose $_}
-	} 
-	get-job | remove-job -force | out-null
-	sleep 1
-#>
-
-    while ($True) {
-        $debug_msg = ''
-        if ($target_list.length -eq 1) {
-            $target = $target_list[0]
-        } else {
-            # cycle over available targets
-            $target = $target_list[$target_counter % $target_list.length]
-            # If a target has 3 more consequtive failures than the average then 
-			# it has 9/70 chance of been skiped.
-            # If it has >=9 more consequtive failures than the average it has 69/70 chance
-			# 70 = how many numbers from 21 up to 91 
-			#  9 = how many numbers from 21 up to 30
-			# 69 = how many numbers from 21 up to 90
-            # NOTE: strangely -maximum 92 gives values that are at most 91
-			$relative_fail_score = $fail_score[$target] - [int]($fail_score.values | measure-object -Average).Average
-            while ($relative_fail_score*10 -ge (get-random -minimum 21 -maximum 92)) {
-                $target_counter += 1
-                $debug_msg += "$($target) skiped "
-                $target = $target_list[$target_counter % $target_list.length]
-            }
-        }
-		# If not yet resolved retry to resolve the IP address of $target
-		if (!($Address[$target])) {
-			try {
-				$Address[$target] = [System.Net.Dns]::GetHostAddresses($target)[0].IPAddressToString
-			} catch {
-				$debug_msg += "$($target): DnsResFail. "
-				# note that DNS failures will also cause a ping failure 
-				# so after many failures this host will get a high fail_score
-			}
-		}
-
-        $sent_at = (Get-Date)
-        try {
-			$ret = $Ping.Send($Address[$target], $TimeOut)
-        } catch {
-            $ret =[PSCustomObject]@{`
-                Status = $Error[0].Exception.GetType().FullName; `
-                RTT = 9999; `
-                group_id = $target_list[0] + $target_list[1]; `
-                target = $target `
-            }
-        }
-
-        $ts_end = (Get-Date)
-        $ping_count += 1
-		$attempts[$target] = $attempts[$target] + 1
-        if ($ret.Status -ne 'Success') {
-            # failed ping
-            $real_RTT = 9999
-            $fail_score[$target] = [math]::min(9, $fail_score[$target]+1) # don't go over 9
-            $failures[$target] = $failures[$target] + 1
-            $debug_msg += "$($target): $($fail_score[$target]) con.fail. "
-        } else {
-            # succesful ping
-            $real_RTT = $ret.RoundtripTime
-            if (($last_RTTs[$target].count -eq 1) -and ($last_RTTs[$target].Peek() -eq 0)) {
-                $foo = $last_RTTs[$target].dequeue() # get rid of the initial dummy value
-            }
-            $fail_score[$target] = [math]::max(0, $fail_score[$target]-1)
-            $last_RTTs[$target].enqueue($real_RTT)
-            if ($last_RTTs[$target].count -gt $max_values_to_keep) {$foo = $last_RTTs[$target].dequeue()}
-            $Median_of_last_RTTs[$target] = get_median $last_RTTs[$target]
-            # the following line will force get_baseline to always recalculate 
-            # the baseline during the first cycle of pings 
-            if ($ping_count -le $target_list.count) {$Baseline = $null} 
-            $Baseline = (get_baseline $Baseline $Median_of_last_RTTs.values)
-        }
-
-        if ($real_RTT -eq 9999) {
-            $effective_RTT = 9999
-        } else {
-            $effective_RTT = [math]::max($Baseline, $real_RTT + ($Baseline - $Median_of_last_RTTs[$target]))
-        }
-
-        # return this:
-        [PSCustomObject]@{`
-            sent_at = $sent_at; `
-            Status = $ret.Status.tostring(); `
-            target = $target; `
-            ping_count = $ping_count; `
-            RTT = $effective_RTT; `
-            dt = $Real_RTT - $effective_RTT; `
-            real_RTT = $real_RTT; `
-			address = $address[$target]; `
-            Median_of_last_RTTs = $Median_of_last_RTTs[$target]; `
-            Baseline = $Baseline; `
-            failures = $failures[$target]; `
-			attempts = $attempts[$target]; `
-            group_id = $target_list[0] + $target_list[1]; `
-            debug = $debug_msg
-        }
-        # sleep until msec =0 (or 500 for $PerSec=2)
-        $cur_msec = (Get-Date).millisecond
-        if ($cur_msec -gt 500) {
-            start-sleep -Milliseconds (1000-$cur_msec+8)
-        } else {
-            if ($PerSec -eq 2) {
-                start-sleep -Milliseconds (500-$cur_msec+8)
-            } else {
-                start-sleep -Milliseconds (1000-$cur_msec+8)
-            }
-        }
-
-        $target_counter += 1
-    }
-}
 '@
 
 $CodeOfSpecialPing = @'
 Function Start-SpecialPing {
     # Allows custom interval with msec accuracy.
-    # Will try hard to send 1000/$Interval pings per second
-    # by adjusting the delay between two consequtive pings.
+    # Will try to keep the pings per second at 1000/$Interval
+    # by sending the next ping earlier if the previous one 
+	# returned after more than $Interval msecs.
     # NOTE that in case of failure, it does not return 0 but
     # the elapsed time
     Param(
         [string]$target="",
-        [int]$TimeOut = 3000,
+        [int]$TimeOut = 999,
         [int]$Interval = 500
     )
 
@@ -943,6 +450,13 @@ function aprox_num($num) {
         return "???"
     }
 }
+function within_same_second($time1, $time2) {
+	# returns true if both times are within the same integer second
+	# (note that this is not always the same as being less than 1sec appart)
+    if ($time1.second -eq $time2.second) {
+        return ([math]::abs(($time2 - $time1).TotalSeconds) -lt 1)
+    } else {return $false}
+}
 function get_enough_decimal_digits($num) {
     <#
     Return how many decimal digits are "enough" for printing $num without
@@ -977,12 +491,14 @@ function get_enough_decimal_digits($num) {
     }
     return $decimal_digits
 }
-function get_median($series){
-    # returns the integer part of the median of $series after ignoring any 9999 elements
-    # It returns 9999 if series is empty (or contains only 9999 elements)
-    # NOTE technicaly it is not exactly the median because if $series has even 
-    # number of elements I'm just returning the value of the element just before
-    # the midle of the list
+function get_aprox_median($series){
+    # Returns the integer part of the median of $series after ignoring any 9999 items
+    # It returns 9999 if series is empty (or contains only 9999 items)
+	#
+    # Regarding "aprox": if $series has odd number of items we 
+	# calculate the corect median but if it has even number of items 
+	# we calculate an aproximation. Specificaly the value of the element 
+	# just before the midle one instead of the average of that and the next one.
     $sorted = [array]($series  | ?{$_ -ne 9999} | sort-object)
     if ($sorted) {
         [int]$sorted[[int]($sorted.count/2)]
@@ -992,7 +508,11 @@ function get_median($series){
 }
 function get_baseline($Baseline, $RTT_list){
     # Calculates a "Baseline" given a series of RTTs and the current 
-    # Baseline. The baseline must _slowly_ follow the minimum of all the values 
+    # Baseline. The baseline will eventually be the minimum of all the values 
+	# but if the minimum changes fast the baseline follows _slowly_ 
+	# If however the minimum strays too far from the baseline, baseline
+	# gets adjusted with one big step.
+	#
     # (Remember that RTT values are "normalized" by getting moved towards the 
     #  baseline so it's important for the baseline not to jitter around since 
     #  that jitter  will also appear on all the RTTs that follow it)
@@ -1421,54 +941,25 @@ function render_bar_graph($y_values, $title="", $options="", $special_value, $de
     echo "${COL_TITLE}$(" " * ($width)) $ticks${COL_RST}"
     # echo "Oldest-> $y_values"
 }
-function render_slow_updating_graphs($ShowCountOfFailedResponders) {
+function render_slow_updating_graphs() {
     # describe the sampling period and the total time we collect samples
     # e.g. per 2' for 14'
     $AggPeriodDescr = "per $([math]::round($AggregationSeconds/60,1))' "+`
-        "for $([math]::round($AggregationSeconds*$Variance_values.count/60,1))'"
+        "for $([math]::round($AggregationSeconds*$p95_values.count/60,1))'"
 
     # X axis limits
     $MaxItems = $Host.UI.RawUI.WindowSize.Width - 6
 
-    # display $SlowResponders_values
+    # display $p95_values
     #------------------------------
-    if ($ShowCountOfFailedResponders) {
-        $values = @($SlowResponders_values | select -last $MaxItems)
-        $stats = (stats_of_series $values)
-        if ($GraphMin -ne -1) {$y_min = $GraphMin} else {
-            $y_min = (std_num_le $stats.min)
-            if ($y_min -lt 10) {$y_min = 0}
-        }
-        if ($GraphMax -ne -1) {$y_max = $GraphMax} else {$y_max = (y_axis_max $stats.min $stats.max $y_min 9)}
-        $title = "%TIME with PLENTY OF FAILURES,  $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
-        render_bar_graph $values $title "<stats><H_grid>" 9999 `
-            0 30 $JITTER_BAR_GRAPH_THEME
-    }
-
-    # display $Baseline_values
-    #------------------------------
-    $values = @($Baseline_values | select -last $MaxItems)
+    $values = @($p95_values | select -last $MaxItems)
     $stats = (stats_of_series $values)
-    if ($GraphMin -ne -1) {$y_min = $GraphMin} else {
-        $y_min = (std_num_le $stats.min)
-        if ($y_min -lt 10) {$y_min = 0}
-    }
-    $y_max = (y_axis_max $stats.min $stats.max $y_min 9)
-    $title = "RTT BASELINE(min),  $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
-    render_bar_graph $values $title "<stats><H_grid>" 9999 `
-        $y_min $y_max $RTTMIN_BAR_GRAPH_THEME
-
-    # display $Variance_values
-    #------------------------------
-    $values = @($Variance_values | select -last $MaxItems)
-    $stats = (stats_of_series $values)
-    $y_min = (std_num_le $stats.min)
-    if ($y_min -lt 10) {$y_min = 0}
+    $y_min = 0
 	if ($GraphMax -ne -1) {$y_max = $GraphMax} else {
 		$y_max = (y_axis_max $stats.min $stats.max $y_min 10)
 		if ($y_max -eq $y_min) {$y_max = (std_num_ge $y_max + 1)}
 	}
-    $title = "RTT VARIANCE(p95-min), $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
+    $title = "RTT 95th PERCENTILE, $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     render_bar_graph $values $title "<stats><H_grid>" 9999 `
         $y_min $y_max
 
@@ -1476,7 +967,7 @@ function render_slow_updating_graphs($ShowCountOfFailedResponders) {
     #------------------------------
     $stats = (stats_of_series $Loss_values)
     $y_min = 0
-    $y_max = (y_axis_max $stats.min $stats.max 0 4)
+	if ($stats.max -le 6) {$y_max = 6} else {$y_max = 24}
     $title = "LOSS%, $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>%"
     render_bar_graph @($Loss_values | select -last $MaxItems) $title "<stats><H_grid><min_no_color>" 100 `
         $y_min $y_max $LOSS_BAR_GRAPH_THEME
@@ -1531,19 +1022,6 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
     if ($GraphMin -ne -1) {$y_min = $GraphMin}
     if ($GraphMax -ne -1) {$y_max = $GraphMax}
     render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
-
-    if ($ShowCountOfFailedResponders) {
-        # display the RespondersCnt bar graph
-        $graph_values =  @($RespondersFailed_values | select -last $script:EffBarsThatFit)
-        #echo ([string][char]9472*75)
-        $title = "Count of hosts that did not reply,  min=<min>, max=<max>, last=<last>"
-        # decide Y axis limits
-        $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
-        ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-        $y_max = $PING_TARGET_LIST.count
-        render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 0 $y_max  $JITTER_BAR_GRAPH_THEME
-    }
-
     # display the histogram
     if ($RTT_values.count) {
         #echo ([string][char]9472*75)
@@ -1553,7 +1031,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
         #echo ""
     }
 
-    if ($Variance_values.count) {
+    if ($p95_values.count) {
         render_slow_updating_graphs $ShowCountOfFailedResponders
         if (Test-Path variable:script:SCREEN_DUMP_FILE) {
             $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
@@ -1565,7 +1043,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
 
     if ($DebugMode) {
         #echo "AggPeriodSeconds=$script:AggPeriodSeconds"
-        #echo "Variance_values=$Variance_values"
+        #echo "p95_values=$p95_values"
         echo "Jitter_values=$Jitter_values"
         #sleep 0.1
     }
@@ -1643,11 +1121,8 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $ScrUpdPeriodStart = $AggPeriodStart
 
         $RTT_values = New-Object System.Collections.Queue
-        $RespondersFailed_values = New-Object System.Collections.Queue
         $ToSave_values = @()
-        $Variance_values = New-Object System.Collections.Queue
-        $Baseline_values = New-Object System.Collections.Queue
-        $SlowResponders_values = New-Object System.Collections.Queue
+        $p95_values = New-Object System.Collections.Queue
         $Jitter_values = New-Object System.Collections.Queue
         $Loss_values = New-Object System.Collections.Queue
 
@@ -1664,7 +1139,7 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
     }
     process {
         $Items  | %{
-            # echo "Item: $($_.GetType().Name) $($_.status) $($_.RTT) $($_.status) $($_.bucket_ok_pings)"
+            # echo "Item: $($_.GetType().Name) $($_.status) $($_.RTT) $($_.status) "
             # echo $_
             # echo ""
 
@@ -1693,7 +1168,6 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             # populate $RTT_values
             #-----------------------------
             $RTT_values.enqueue($ms)
-            $RespondersFailed_values.enqueue($_.bucket_pings - $_.bucket_ok_pings)
 			
             # keep $ms to a list of values that we will right to the ops....pingrec file
             if ($ms -eq 9999) {$ToSave_values += @(-1)} else {$ToSave_values += @($ms)}
@@ -1701,7 +1175,6 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             # keep at most $script:EffBarsThatFit measurements in RTT_values
             while ($RTT_values.count -gt $max_values_to_keep) {
                 $foo = $RTT_values.dequeue()
-                $foo = $RespondersFailed_values.dequeue()
             }
 
             # other things to do with input
@@ -1741,32 +1214,18 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $last_hist_secs_values = @($RTT_values | select -Last ($AggregationSeconds * $PingsPerSec))
             $last_hist_secs_values_no_lost = @($RTT_values | ?{$_ -ne 9999} | select -Last ($AggregationSeconds * $PingsPerSec))
 
-            # populate the slow Plenty of Failures graph
-            # Percent of samples were we had plenty of failures
-            # "Plenty" = more than 20% of hosts failed to respond
-            $values = @($RespondersFailed_values | `
-                select -Last ($AggregationSeconds * $PingsPerSec) )
-			$too_low_values = @($values | ?{$_ -gt ($PING_TARGET_LIST.count * 0.2)})
-            if ($too_low_values) {
-                $SlowResponders_values.enqueue(
-                    [math]::round(100 * $too_low_values.count / $values.count,1))
-            } else {
-                $SlowResponders_values.enqueue(0)
-            }
             
             # populate the 95 percentiles bar graph
             if ($last_hist_secs_values_no_lost) {
                 $stats = (stats_of_series $last_hist_secs_values_no_lost)
-                $Variance_values.enqueue($stats.p95 - $stats.min)
-                $Baseline_values.enqueue($stats.min)
+                $p95_values.enqueue($stats.p95)
                 if (($DebugData) -and ($all_pings_cnt -lt 20000)) {
-                    "Baseline_values = $($stats.min) Variance_values=$($stats.p95 - $stats.min) from these data: $last_hist_secs_values_no_lost" >> "$($env:TEMP)\ops.$ts.data"
+                    "p95_values=$($stats.p95 - $stats.min) from these data: $last_hist_secs_values_no_lost" >> "$($env:TEMP)\ops.$ts.data"
                 }
 
             } else {
                 # all pings were lost...
-                $Variance_values.enqueue(0)
-                $Baseline_values.enqueue(9999)
+                $p95_values.enqueue(0)
             }
 
             # populate the jitter bar graph
@@ -1778,9 +1237,8 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
             $Loss_values.enqueue($lostperc)
 
             # keep at most $script:EffBarsThatFit (same as for the time graph
-            while ($Variance_values.count -gt ($script:EffBarsThatFit+100)) {
-                $foo = $Variance_values.dequeue()
-                $foo = $Baseline_values.dequeue()
+            while ($p95_values.count -gt ($script:EffBarsThatFit+100)) {
+                $foo = $p95_values.dequeue()
                 $foo = $Jitter_values.dequeue()
                 $foo = $Loss_values.dequeue()
             }
@@ -1790,14 +1248,6 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
 
             # signal that it is time to update the file with the current screen
             $save_screen_to_file = $true
-			
-			# save $HOST_STATS to file
-			$txt = "HOST STATISTICS`nHost        `tAttempts`tFailures`tMin(RTT)"
-			$HOST_STATS_ATTEMPTS.keys | sort | %{
-				$txt = $txt + "`n$($_.PadRight(12))`t$($HOST_STATS_ATTEMPTS[$_])`t`t$($HOST_STATS_FAILURES[$_])`t`t$($HOST_STATS_MIN_REAL_RTT[$_])" 
-			}
-			echo $txt > $script:STATS_FILE
-
         }
 
 
@@ -1852,6 +1302,155 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         # nothing to do
     }
 }
+function parse_ping_exe_output($line) {		
+	# Converts lines from the output of ping.exe to a PSCustomObject
+	# The lines are like this:  1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
+	# EXAMPLE:
+	# PS C:\> parse_ping_exe_output "1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115"
+	# 	sent_at       : 9/16/2023 22:20:01
+	# 	RTT           : 71
+	# 	destination   : 8.8.4.4
+	# 	parsing_error :
+	# 	Status        :
+	# 
+	# PS C:\> parse_ping_exe_output "foo bar"
+	# 	sent_at       : 9/17/2023 10:53:26
+	# 	RTT           : 9999
+	# 	destination   :
+	# 	parsing_error : Line doesn't match expected format: foo bar
+	# 	Status        :
+	#
+	
+ 	if ($line -match '[0-9.]+ Reply from [0-9.]+: bytes=.* time[<=][0-9]+ms ') {
+		try {
+			$fields = $line -split ' '
+			$timestamp = $fields[0]
+			$destination = $fields[3] -replace ':'
+			$RTT = [int]($fields[5] -replace "time[<=]" -replace '[a-z]+')
+			[PSCustomObject]@{`
+				sent_at = ((Get-Date "1970-01-01 00:00:00").AddSeconds($timestamp - $RTT/1000)); `
+				RTT = $RTT; `
+				destination = $destination; `
+				parsing_error = ""
+				Status = $null; `
+				}		
+		} catch {
+			[PSCustomObject]@{`
+				sent_at = (get-date); `
+				RTT = 9999; `
+				destination = $null; `
+				parsing_error = "$($Error[0].Exception.GetType().FullName) for line: $line"
+				Status = $null; `
+			}
+		}
+	} else {
+		[PSCustomObject]@{`
+			sent_at = (get-date); `
+			RTT = 9999; `
+			destination = $null; `
+			parsing_error = "Line doesn't match expected format: $line"
+			Status = $null; `
+		}
+	}
+}
+function process_single_host_PSOC($record) {
+	# success_percent is meaningfull for paralel multi pings only
+	# It is a decimal from 0 to 1, with 1 meaning 100% of all the 
+	# pings of this "bucket" were replied
+	if ($record.status -eq 'Success') {$success_percent = 1} else {$success_percent = 0}
+	$output = [PSCustomObject]@{`
+		sent_at = $record.sent_at; `
+		Status = $record.status; `
+		RTT = $record.RTT; `
+		destination = $record.target; `
+		success_percent = $success_percent; `
+		warning = ""
+	}
+	return $output
+}
+
+$script:first_bucket_ever = $true 
+$script:bucket = @()
+$script:last_record = [PSCustomObject]@{sent_at = (get-date -Year 2000)}
+function process_parallel_host_PSOC($record) {
+	# Aggregate all $data_sorted grouped by int(sent_at) and output 
+	# this aggregate value for the rest of the code. 
+	# Use this aggregation logic: 
+	# 	For every unique second :
+	#      Put all non-localhost replies in an array $bucket
+	# 	   If the bucket contains no replies set Status='failure' and RTT to
+	#         RTT = 9999
+	#      If not calculate the RTT as:
+	#         RTT = min(effective_RTT of all hosts)
+	#      Finally output a PSCustomObject for format-pingtimes to consume
+
+	# NOTE:
+	# 	If some second does not appear in $data_sorted it means that not even
+	# 	localhost replied (most likely the system was sleeping)
+	#   So we ignore these seconds 
+	#   TODO: in the future I could be printing a column of X or something. 
+	#   Not a column for every second of course because hours may have passed 
+	#   with the system on sleep)
+		
+	$output = $null
+	
+	# ?{$_} ignores some $null data -- don't know why they are there
+	if (within_same_second $record.sent_at $script:last_record.sent_at) {
+		# ping-reply record for the same second as the previous one
+		if ($record.destination -like '127.*') {
+			# ignore replies from local host
+		} else {
+			# just collect replies to $script:bucket for latter processing
+			$script:bucket += @($record)
+		}
+	} else {
+		# ping-reply record for a new second 
+		# Before dealing with the new record, process the $script:bucket for the previous second
+		if ($script:first_bucket_ever) {
+			# do nothing for the first bucket ever
+			$script:first_bucket_ever = $false
+		} else {
+			if (!($script:bucket)) {
+				# bucket is empty (no replies from any host except localhost)
+				$output = [PSCustomObject]@{`
+					sent_at = (get-date); `
+					Status = 'failure'; `
+					RTT = 9999; `
+					destination = 'Internet'; `
+					success_percent = 0; `
+					warning = ""
+				}
+			} else {
+				# good, bucket was not empty
+				$how_many_hosts_replied = (($script:bucket | Measure-Object).count)
+				# write-host -fore blue "`$how_many_hosts_replied = $how_many_hosts_replied"
+				$output = [PSCustomObject]@{`
+					sent_at = $script:bucket[0].sent_at; `
+					Status = 'Success'; `
+					RTT = ($script:bucket | Measure-Object -Property RTT -Minimum | Select-Object -ExpandProperty Minimum); `
+					destination = 'Internet'; `
+					success_percent = (4/$how_many_hosts_replied); `
+					warning = ""
+				}
+			}
+		}
+		# After we are done with the $script:bucket for the previous second, create a new $script:bucket
+		if ($record.destination -like '127.*') {
+			$script:bucket = @()
+		} else {
+			# TODO: convert real RTTs to effective RTTs before adding record to bucket
+			#    effective_RTT = real_RTT + dbb
+			# WHERE:
+			#    dbb = (RTT baseline of all hosts) - (RTT baseline of this host) 
+			$script:bucket = @($record)
+		}
+	}
+	
+	$script:last_record = $record
+	
+	return $output
+}
+
 function Out-PingStats {
 <#
 .SYNOPSIS
@@ -1926,35 +1525,39 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
         $jobs = @()
         if ($parallel_testing) {
-            $total_threads = $PING_TARGET_LIST.count
-            $PING_TARGET_LIST | %{
-                $group_id = $_[0] + $_[1]
-                $jobs +=  @((
-                    Start-ThreadJob -ThrottleLimit $total_threads -ArgumentList $PingsPerSec, $_, $CodeOfMultiPings -ScriptBlock {
-                            $PingsPerSec = $args[0]
-                            $target = $args[1]
-                            $CodeOfMultiPings = $args[2]
-                            . Invoke-Expression $CodeOfMultiPings
-                            $TwicePerSec = $false; if ($PingsPerSec -eq 2) {$TwicePerSec = $true}
-                            Start-MultiPings -target $target
-                    }
-                ))
-            }
+			# We start two "beacon" pings to localhost and 4 pings to a few well known hosts
+			# if we loose the beacon pings it means we have no networking layer
+			# (probably system is going to/coming from sleep)
+			# The output is a stream of lines like these:
+			#	1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+			#	1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
+			#	1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
+			#	1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
+			#	1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
+
+			# about the mysterious sleep 1: most of the times I get a reply from localhost
+			# before any of the others and the rest of the code will happily report
+			# a timeout to the Internet.
+			$jobs+=@((Start-Job -ScriptBlock {sleep 1; $hostn="127.0.0.1";while($true){ping -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+			$jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.1"  ;while($true){ping -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+			$jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.2"  ;while($true){ping -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+			$jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.8.8"  ;while($true){ping -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+			$jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.4.4"  ;while($true){ping -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
         } else {
             $group_id = $target
             $last_RTTs[$group_id] = New-Object System.Collections.Queue
             $last_RTTs[$group_id].enqueue(99)
             $Median_of_last_RTTs[$group_id] = 0
 
-            $jobs += @((
-                start-ThreadJob -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
+            $jobs += [array](
+                start-job -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
                     $PingsPerSec = $args[0]
                     $target = $args[1]
                     $CodeOfSpecialPing = $args[2]
                     . Invoke-Expression $CodeOfSpecialPing
                     Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec)
                 }
-            ))
+            )
         }
 
         if ($DebugMode) {
@@ -1982,161 +1585,71 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
 
                     foreach ($job in $jobs) {
-                        if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
+                        if ($parallel_testing) {
+							if (($job | get-job).HasMoreData) {
+								# receive-job is a stream of lines(strings) like these:
+								#	1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+								#	1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
+								#	1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
+								#	1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
+								#	1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
+								#
+								# Ping.exe has a timeout of 1.5sec, so a reply to one host may come 
+								# 1499msec after the request, and a reply to another host may come in 1msec
+								# AS A RESULT THE TIMESTAMPS MAY BE OUT OF ORDER BY AS MUCH AS 1.5sec
+								#
+								# parse_ping_exe_output gives a PSCustomObject stream like this:
+								#     sent_at  (it is calculated as timestamp - RTT)
+								#              (if parsing failed we set it to current time)
+								#     RTT
+								#     destination    # host addr
+								#     Status = $null 
+								#     parsing_error "" or a human readable parsing error
+								#
+								$parsed_lines += [array]($job | receive-job | %{ parse_ping_exe_output $_} )								
+
+								# From $parsed_lines, extract only the records having parsing_error="" and sent_at at least 
+								# 1.99secs in the past*, move them to array $data
+								# (Keep the other records in $parsed_lines for latter)
+								# Ignore lines that failed parsing (just show parsing errors somewhere)
+								#     							*: See note about "OUT OF ORDER" above
+								# 
+								$records_kept = @()
+								$parsed_lines | ?{$_} | %{
+									if ((((Get-Date) - $_.sent_at).TotalSeconds -lt 2) -and (!($_.parsing_error))) {
+										$records_kept += [array]$_ # replies within last 2sec -- keep them for later
+									} else {
+										$data += [array]$_ # replies ready for consumption
+									}
+								}
+								$parsed_lines = $records_kept # kept for later
+							}
+						} else {
+							if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
+						}
                     }
 
                     # $data
                     if ($data) {
-                        # data contain these properties:
-						#     sent_at <-get-date
-						#     Status
-						#     RTT
-						#     target
-						#     ping_count
-						#     dt
-						#     real_RTT
-						#              ' for this specific target
-						#     attempts
-						#     failures
-						#     address
-						#     Median_of_last_RTTs
-						#     Baseline
-						#
-						#     group_id
-						#     debug
+						$data_sorted = ($data | ?{$_} | sort-object -property sent_at)
+						$data = @()
                         if ($parallel_testing) {
-								
-                            # ?{$_} ignores some $null data -- don't know why they are there
-                            $data_sorted = ($data | ?{$_} |  sort-object -property sent_at)
-                            if (($DebugData) -and ($ping_count -lt 20000)) {
-                                $data_sorted | ft >> "$($env:TEMP)\ops.$ts.data"
-                            }
-                            if ($debugmode) {
-                                write-verbose "<---data_sorted---"
-                                $data_sorted | %{write-verbose $_}
-                                write-verbose "--->"
-                            }
-                            write-verbose "<---bucket---"
-                            write-verbose " "
-
-                            $data_sorted | ?{$_} | %{
-								$HOST_STATS_ATTEMPTS[$_.target] = $_.attempts
-								$HOST_STATS_FAILURES[$_.target] = $_.failures
-								if ($_.target -in $HOST_STATS_MIN_REAL_RTT.keys) {
-									$HOST_STATS_MIN_REAL_RTT[$_.target] = [math]::min($HOST_STATS_MIN_REAL_RTT[$_.target], $_.real_RTT)
-								} else {
-									$HOST_STATS_MIN_REAL_RTT[$_.target] = $_.real_RTT
-								}
-
-                                write-verbose $_
-                                if ($_.status -eq 'Success' -and $last_success_at -lt $_.sent_at) {
-                                    # if later I receive packets with sent_at before this
-                                    # timestamp I will discard them (it is obviously a timeout
-                                    # that came delayed by one or more seconds
-                                    $last_success_at = $_.sent_at
-                                }
-                                if ($_.sent_at -lt $last_success_at) {
-                                    # ignore this packet
-                                    write-verbose ":::Ignoring late packet at sent_at=$($_.sent_at)"
-                                } else {
-
-                                    #----------------------------------------------------------
-                                    # "Normalize" the RTT reported by each group in order to bring
-                                    # them close to a _common_ minimum
-                                    if (!($_.group_id -in $last_RTTs.keys)) {
-                                        write-verbose "$($_.group_id) not in `$last_RTTs.keys $($last_RTTs.keys)"
-                                        $last_RTTs[$_.group_id] = New-Object System.Collections.Queue
-                                        $Median_of_last_RTTs[$_.group_id] = $_.RTT
-                                    }
-                                    $last_RTTs[$_.group_id].enqueue($_.RTT)
-                                    if ($last_RTTs[$_.group_id].count -gt $max_values_to_keep) {$foo = $last_RTTs[$_.group_id].dequeue()}
-                                    $Median_of_last_RTTs[$_.group_id] = get_median $last_RTTs[$_.group_id]
-                                    $Baseline = (get_baseline $Baseline $Median_of_last_RTTs.values)
-                                    if ($_.RTT -ne 9999) {
-                                        $_.RTT = [math]::max($Baseline, $_.RTT + ($Baseline - $Median_of_last_RTTs[$_.group_id]))
-                                    }
-                                    #----------------------------------------------------------
-
-                                    # process packet
-                                    $msec_dif = [math]::abs(($_.sent_at - $bucket_time).TotalMilliseconds)
-                                    write-verbose ("$_" -replace 'PSComputerName.*')
-                                    write-verbose "msec_dif:  $msec_dif, bucket_time=$bucket_time, sent_at=$($_.sent_at)"
-                                    if ($msec_dif -lt 300) {
-                                        # this ping is very close to the previous -- add it to existing bucket
-                                        $bucket += $_
-                                    } else {
-                                        # this ping is far from the previous -- process the currect bucket
-                                        if ($bucket) {
-                                            if (($bucket).Status -contains 'Success') {
-                                                $bucket_status = 'Success'
-                                            } else {
-                                                $bucket_status = $bucket[0].Status # status from the 1st item in the bucket
-                                            }
-                                            $ok_pings = [array]($bucket | ?{$_.Status -eq 'Success'})
-                                            if ($ok_pings) {$ok_pings = $ok_pings.length} else {$ok_pings=0}
-                                            $ping_count += 1
-
-                                            $RTT = (($bucket).RTT | measure -Minimum).minimum
-
-                                            $output = [PSCustomObject]@{`
-                                                sent_at = (($bucket).sent_at | measure -Minimum).minimum; `
-                                                Status = $bucket_status; `
-                                                RTT = $RTT; `
-                                                ping_count = $ping_count; `
-                                                bucket_pings = $bucket.length; `
-                                                bucket_ok_pings = $ok_pings; `
-                                                Baseline = $Baseline; `
-                                                destination = ($bucket.target) -join ";"; `
-                                                debug = ($bucket.debug) -join ""
-                                            }
-                                            $ping_count += 1
-                                            $bucket_time = $_.sent_at
-                                            write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
-                                            $bucket = @()
-                                            write-verbose ""
-                                            write-verbose "<==============output=============="
-                                            echo $output
-                                            write-verbose "=======>"
-                                            if (($DebugData) -and ($ping_count -lt 20000)) {
-                                                $output | ft >> "$($env:TEMP)\ops.$ts.data"
-                                            }
-
-                                        } else {
-                                            write-verbose ":::The bucket is EMPTY"
-                                        }
-                                        $bucket = [array]$_ # this ping is the 1st in a new bucket
-                                        $bucket_time = $_.sent_at
-                                        write-verbose ":::Starting new bucket, Init bucket_time=$bucket_time"
-                                    }
-                                }
-                            }
-                            $data = @()
-                        } else {
-                            # non-parallel single host mode of operation ($parallel_testing=$false)
-                            $data_sorted = ($data | ?{$_} | sort-object -property sent_at)
-                            $data = @()
+                            # parallel host mode of operation 
                             $data_sorted | %{
-                                $ok_pings = 0
-                                if ($_.status -eq 'Success') {$ok_pings = 1}
-                                $output = [PSCustomObject]@{`
-                                    sent_at = $_.sent_at; `
-                                    Status = $_.status; `
-                                    RTT = $_.RTT; `
-                                    ping_count = $_.ping_count; `
-                                    bucket_pings = 1; `
-                                    bucket_ok_pings = $ok_pings; `
-                                    Baseline = $Baseline; `
-                                    destination = $_.target; `
-                                    debug = ""
-                                }
-                                echo $output
-                            }
+								if ($DebugMode) {write-host -fore cyan $_}
+								$out = (process_parallel_host_PSOC $_)
+								if (($DebugMode) -and $out) {write-host -fore magenta $out}
+								echo $out
+							}
+                        } else {
+                            # non-parallel single host mode of operation 
+                            $data_sorted | %{$out = (process_single_host_PSOC $_); if ($DebugMode) {write-host $out}; echo $out}
                         }
                     }
                 }
             }
         } `
-         | Format-PingTimes `
+         | ?{$_} | Format-PingTimes `
             -Target $Target `
             -PingsPerSec $PingsPerSec `
             -UpdateScreenEvery $UpdateScreenEvery `
@@ -2166,14 +1679,21 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             } catch {
                 Write-Host "Failed to retrieve output from background pings, $($error[0])"
             }
-            Write-Host  "Removing jobs..."
-            foreach ($job in $jobs) {Remove-Job $job -Force}
-            write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings."
+			if (!($DebugMode)) {
+				Write-Host  "Removing jobs..."
+				foreach ($job in $jobs) {Remove-Job $job -Force}
+				write-host -foregroundcolor white -backgroundcolor black "Discarded $discarded_count pings."
+			} else {
+				if (get-job) {
+					Write-Host  "Please remove jobs manually`n   get-job | remove-job -force" -fore yellow
+				}
+			}
         }
     }
 }
 
 function helper_find_pingable_com_host($CheckAfterHost='') {
+	# TODO: I don't need this function any more
     # discovers pingable IPs and prints a list of them with RTTs in the lower first quartile
     # it prints the IPs with lower RTTs first
     
@@ -2286,7 +1806,7 @@ function helper_find_pingable_close_hosts($min_hops=2, $max_hops=4) {
         $network = $_
         1..254 | %{
             $octet = $_
-            $hosts_to_try += @("$network$octet")
+            $hosts_to_try += [array]"$network$octet"
         }
     }
     write-host "$($hosts_to_try.count) IPs to try"
@@ -2305,7 +1825,7 @@ function helper_find_pingable_close_hosts($min_hops=2, $max_hops=4) {
             $out=(Receive-Job -id $_.id)
             if (!($out -like 'Ping statistics for 127.*') -and ($out -match 'Received = [^0]')) {
                 $IP = ($out | sls 'Pinging').line -replace '^.*Pinging ' -replace ' with.*'
-                $IPs += @($IP)
+                $IPs += [array]$IP
                 # Write-host "Found responding host at $IP"
             } else {
                 $failed_hosts += 1
@@ -2337,9 +1857,5 @@ function helper_find_pingable_close_hosts($min_hops=2, $max_hops=4) {
     return $IPs 
 }
 
-if (!(Get-Module ThreadJob -list)) {
-    echo "Please install ThreadJob module by issuing this command with admin priviledges:`nInstall-Module -Name ThreadJob"
-} else {
-    # $args_json = (($args | ConvertTo-Json ) -replace '\r\n',' ')
-    Out-PingStats @args
-}
+# $args_json = (($args | ConvertTo-Json ) -replace '\r\n',' ')
+Out-PingStats @args
