@@ -32,18 +32,12 @@ Well then, Out-PingStats is for you!
 
 ### TLDR How to try it out
 
-#### Step 1. Install depedencies 
-
-Run this from an **admin PowerShell**
-
-    Install-Module -Name ThreadJob 
-    
-#### Step 2. Download 
+#### Step 1. Download 
 
     cd $Env:USERPROFILE
     iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
 
-#### Step 3. Run
+#### Step 2. Run
 
    1. Quick'n'dirty test of your internet connection:
 
@@ -106,15 +100,7 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
 > **For all graphs the lower the better**
 
-**% of TIME with PLENTY OF FAILURES** This is computed only when evaluating
-the quality of the uplink to the internet. In that case we ping about 10
-hosts in parallel. Some times a few of them may not respond. 
-This graph shows the percentage 
-of time where more than 20% of them failed to reply.
-
-**RTT BASELINE** `= min(RTT)` for the period.
-
-**RTT VARIANCE** `= AlmostMax(RTT) - min(RTT)` for the period. (See bellow for more info) 
+**RTT 95th PERCENTILE** `= AlmostMax(RTT)` for the period. (See bellow for more info) 
 
 **LOSS%** is the percent of the lost pings during the period.
 
@@ -122,7 +108,7 @@ of time where more than 20% of them failed to reply.
 (we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
 
-`AlmostMax` is the 95th percentile (`p95`) of RTTs. So in simple words, during a period none of the pings have an `RTT < BASELINE`, 95% of them have `BASELINE < RTT < BASELINE + VARIANCE` and 5% of them have `RTT > BASELINE + VARIANCE`. 
+`AlmostMax` is the 95th percentile (`p95`) of RTTs. So in simple words, during a period, for 95% we have `RTT <= p95`. 
 
 I use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
 we have to deal with **most** of the time. 
@@ -202,10 +188,7 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
 ### Parallel pings/smart aggregation
 
 When checking internet quality this script tries hard to be resilient to problems of specific hosts. 
-To that end it will run 10 ping jobs in parallel threads. Each job pings a different host every second.
-It has 4 sets of hosts to switch between so that each host 
-will see a ping/query every 4 seconds (or 2 seconds if you specify `-PingsPerSec 2`). 
-This way we minimize the chances of our pings getting throttled. 
+To that end it will run 4 ping jobs in parallel pinging 1.1.1.1, 1.1.2.2, 8.8.8.8, and 8.8.4.4.
 If at least one reply is received at a specific second we 
 consider it a success and we **only** take the minimum RTT into acount. 
 We also use a smart algorithm to "normalize" the RTTs of different 
@@ -232,15 +215,6 @@ Note also that MultiPings is reporting to main code just one RTT value
 from all hosts (the min RTT). Then the main code calculates the jitter 
 based on this artificial/agregate RTT value. I _think_ that this 
 is better than taking the jitter for every host. 
-
-## Note for users outside Europe & USA
-
-There's a list of .com hosts in the code that work fine for Europe and USA. 
-If you live elsewhere and you find the baseline RTT is high you can create a nice list suited for your country by 
-dot sourcing this program and running the helper function `helper_find_pingable_com_host` 
-(it needs a few minutes to spit out the list). 
-Then look at the top of the code for the declaration of `$PING_TARGET_LIST = ` 
-and replace its value with the list you got.
 
 ## Examples of Graphs
 
