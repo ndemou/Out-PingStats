@@ -7,7 +7,7 @@ Out-PingStats is a PowerShell script that displays detailed and easy-to-understa
 
 Wondering how close to ethernet performance your Wi-Fi can give? Run Out-PingStats, spend plenty of minutes with both and enjoy the results:
 
-![image](https://user-images.githubusercontent.com/4411400/226208489-cbed48f5-181f-4579-90b0-5d50e768720a.png)
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/9122d688-351d-47f7-8c02-d1ada11e4c78)
 
 On the left terminal we are pinging our gateway. Initially via ethernet and then via Wi-Fi. 
 
