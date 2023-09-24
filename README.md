@@ -5,17 +5,25 @@ Out-PingStats is a PowerShell script that displays detailed and easy-to-understa
 
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/63b33280-a1ba-4a08-8fe4-da0572c2f942)
 
-## Example
+## TLDR How to try it out
 
-Wondering how close to ethernet performance your Wi-Fi can give? Run Out-PingStats, spend plenty of minutes with both and enjoy the results:
+### Step 1. Download 
 
-![image](https://github.com/ndemou/Out-PingStats/assets/4411400/9122d688-351d-47f7-8c02-d1ada11e4c78)
+    cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
 
-On the left terminal we are pinging our gateway. Initially via ethernet and then via Wi-Fi. 
+### Step 2. Run
 
-At the same time on the right terminal we've let Out-PingStats evaluate our uplink. 
+   1. Test your internet connection:
 
-Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming. 
+           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1"
+    
+   3. Test the connection to a specific host:
+
+           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
+
+You will get good enough graphs without configuring anything but they
+will probably not be the highest quality possible. 
+Read below about selecting a font that will display the best graphs possible.
 
 ## Why would you want to use it? 
 
@@ -33,25 +41,17 @@ Out-PingStats can nicely display several hours' worth of data in one screen, mak
 
 Well then, Out-PingStats is for you!
 
-### TLDR How to try it out
+## Example of using Out-PingStats to evaluate your Wi-Fi quality
 
-#### Step 1. Download 
+Wondering how close to ethernet performance your Wi-Fi can give? Run Out-PingStats, spend plenty of minutes with both and enjoy the results:
 
-    cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/9122d688-351d-47f7-8c02-d1ada11e4c78)
 
-#### Step 2. Run
+On the left terminal we are pinging our gateway. Initially via ethernet and then via Wi-Fi. 
 
-   1. Quick'n'dirty test of your internet connection:
+At the same time on the right terminal we've let Out-PingStats evaluate our uplink. 
 
-           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1"
-    
-   3. Quick'n'dirty test of the connection to a specific host in your LAN:
-
-           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 10.1.1.1"
-
-You will get good enough graphs without configuring anything but they
-will probably not be the highest quality possible. 
-Read below about selecting a font that will display the best graphs possible.
+Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming. 
 
 ### How to use
 
