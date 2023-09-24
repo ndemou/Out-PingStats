@@ -19,7 +19,7 @@ Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming.
 
 #### You want a high certainty evaluation of your connection to the Internet 
 
-To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats is immune to problems of specific hosts because it pings 10 hosts in parallel. It also switches between many dozen hosts to avoid overwhelming any one of them, and implements a smart algorithm to combine the different response times into one meaningful value. If you see packet loss or bad response times, you can be certain that it's because of a problem in *your* infrastructure.
+To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats is immune to problems of specific hosts because it pings 4 well known hosts in parallel. If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in either your infrastructure or your ISP.
 
 #### You want to visually evaluate the quality of a connection for many minutes or hours 
 
@@ -79,10 +79,6 @@ Timeouts/lost packets will appear as a bar of red stars:
 
 ![image](https://user-images.githubusercontent.com/4411400/204651924-730d2144-0dbf-41b8-a825-8e53f8072165.png)
 
-The **Count of hosts that did not reply** graph appears only when evaluating
-the quality of the uplink to the internet. In that case we ping about 10
-hosts in parallel. This graph shows a count of hosts that failed to reply.
-
 The **RTT HISTOGRAM** includes the most recent few hundred pings.
 If you don't know what a histogram is take a look at [wikipedia](https://en.wikipedia.org/wiki/Histogram), 
 it's a very interesting way of representing a group of measurements.
@@ -101,24 +97,25 @@ In the x-axis you get a tick every 10 periods (so 20 mins by default).
 
 > **For all graphs the lower the better**
 
-**RTT 95th PERCENTILE** `= AlmostMax(RTT)` for the period. (See bellow for more info) 
+**RTT 95th PERCENTILE** `= AlmostMax(RTT)` for the period. Almost Max is the 95th percentile (`p95`) of RTTs. In simple words, during a period, 95% of RTTs were less or equal to this value. (See bellow for more info).
 
-**LOSS%** is the percent of the lost pings during the period.
+**LOSS%** is the percent of lost pings during the period.
 
-**ONE-WAY JITTER** is an aproximation of the one-way jitter. 
-(we just divide the two-way jitter by 2, assuming that any delays are symetrical). 
+**ONE-WAY JITTER** is half the two-way jitter. 
+(we thus aproximate the one-way jitter by assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
 
-`AlmostMax` is the 95th percentile (`p95`) of RTTs. So in simple words, during a period, for 95% we have `RTT <= p95`. 
-
-I use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
+We use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
 we have to deal with **most** of the time. 
-This is usualy useful because spurious high RTTs are very common and may get extreme values.
+This is usualy (but not always) a good approximation of our feeling of a line. 
 You may, for example, have 119 pings below 20msec and one at 820msec during a 2 minute period. 
 If ploted, that 820msec outlier,  will skew the scale of your plot extremely while, at the same time provide 
 little information on the quality of the line during that 2min period.
+As a counter example gamers may care about the real max because even 1 or 2 cases of a really bad RTT 
+at the wrong time may be quite noticable.
 
-I should confess though, that **the selection of the 95th percentile is rather arbitrary and more a result of intuition & *taste* than of investigation or knowledge** on the subject.
+I confess, that **the selection of the 95th percentile is rather arbitrary and more 
+a result of intuition & *taste* than of investigation or knowledge** on the subject.
 
 ### Regarding the terminal font
 
