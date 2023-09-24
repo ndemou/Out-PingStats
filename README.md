@@ -231,4 +231,6 @@ is better than taking the jitter for every host.
 
 ### Long term behaviour of a 4G connection
 
+(This example is from an older version where the 95th percentile was split in two different graphs,
+one for the minimum and one for p95-min. It was providing a bit more informative, but it was also harder to explain it to the uninitiated)
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/08671c38-29ce-4fe3-afe7-56a3ccd2c2b5)
