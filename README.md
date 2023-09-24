@@ -37,20 +37,17 @@ Well then, Out-PingStats is for you!
 
 #### Step 1. Download 
 
-    cd $Env:USERPROFILE
-    iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
+    cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
 
 #### Step 2. Run
 
    1. Quick'n'dirty test of your internet connection:
 
-           cd $Env:USERPROFILE
-           powershell -exec bypass -c ".\Out-PingStats.ps1"
+           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1"
     
    3. Quick'n'dirty test of the connection to a specific host in your LAN:
 
-           cd $Env:USERPROFILE
-           powershell -exec bypass -c ".\Out-PingStats.ps1 10.1.1.1"
+           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 10.1.1.1"
 
 You will get good enough graphs without configuring anything but they
 will probably not be the highest quality possible. 
@@ -66,6 +63,8 @@ Read below about selecting a font that will display the best graphs possible.
 
     # To test network connection to 10.1.1.1 by pinging at 20 pings per second:
     Out-PingStats -PingsPerSec 20 10.1.1.1 
+
+    # In all cases you can add -HighResFont $true and you MAY get preatier graphs
 
 If you want to evaluate your connection to a specific host 
 (e.g. when you want to test your ethernet/WIFI quality)
@@ -121,11 +120,11 @@ a result of intuition & *taste* than of investigation or knowledge** on the subj
 
 ### Regarding the terminal font
 
-If your terminal font contains unicode block characters (like these: ▁▂▃▄▅▆▇█)
-then you can add the `-HighResFont $true` option to get
- preatier and more detailed graphs. If you try the option and you get characters like these: ![image](https://user-images.githubusercontent.com/4411400/218545287-b2d6482d-50d6-47d2-a058-c67f5f07ff38.png)
-then the font of your terminal is not containing unicode block characters.
-Paste the above characters to your terminal to check.
+Copy the following unicode block caharacters ▁▂▃▄▅▆▇█ and paste them in your 
+terminal. If they are displayed as shown here then you can add the `-HighResFont $true` 
+option to get preatier and more detailed graphs. If instead you get funny characters 
+(like these ![image](https://user-images.githubusercontent.com/4411400/218545287-b2d6482d-50d6-47d2-a058-c67f5f07ff38.png))
+then the font of your terminal does not contain unicode block characters.
 "Courier" and "Consolas" do not include them, "DejaVu sans mono" does.
 
 If you don't force high or low resolution by using the `-HighResFont $true/$false` option 
@@ -133,13 +132,13 @@ the code will *try* to detect the font and decide whether to use the unicode blo
 It will display this warning if it thinks it can not.
 ![image](https://user-images.githubusercontent.com/4411400/208317605-721dafc4-06fb-4dd1-86ae-5c264fe08a0d.png)
 
-If you are seeing low-resolution graphs the quick solution is this:
+If you want to setup your terminal for high-res graphs, this is the TLDR guide:
    1. [download the zip file for the free "DejaVu sans mono" font](https://dejavu-fonts.github.io/Download.html).
    1. Open the zip file.
    1. Double-click the file `DejaVuSansMono.ttf`  (inside the `ttf` folder).
    1. Click install.
    1. [Configure your PowerShell terminal](https://www.get-itsolutions.com/windows-terminal-change-font/) to use the newly installed font.
-   1. Add the `-HighResFont $true` argument if you still don't get nice bars.
+   1. Add the `-HighResFont $true` argument if Out-PingStats does not automatically detect the availability of the new font.
 
 ### Other features
 
