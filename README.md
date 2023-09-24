@@ -3,8 +3,7 @@
 Out-PingStats is a PowerShell script that displays detailed and easy-to-understand graphs to help you assess the short- and long-term quality of your internet uplink or connection to a specific host. You can use it without leaving your terminal.
 
 
-![image](https://github.com/ndemou/Out-PingStats/assets/4411400/dd75492a-bcaf-449e-a816-e4101e5475ac)
-
+![image](https://github.com/ndemou/Out-PingStats/assets/4411400/90a709c1-9fe0-469c-9034-125985162cea)
 
 ## Example
 
