@@ -1,12 +1,13 @@
 <#
-    v0.24.0
-
+    v0.24.1
+v0.24.1: 
+- FIX: Corectly report ~1pings/sec when target is Internet
 v0.24.0: 
-- Stand alone code with no depedencies! (droped the ThreadJob module depedency)
-- Brand new parallel pinging strategy 
+- IMPROVEMENT: Stand alone code with no depedencies! (droped the ThreadJob module depedency)
+- CHANGE: Brand new parallel pinging strategy 
   I only ping 4 well known hosts (all aces, all eights), using ping.exe
-- Displays p95(RTT) that everyone understands instead of baseline and variance 
-- Removed some dead code (e.g. for DNS querying)
+- CHANGE: Displays p95(RTT) that everyone understands instead of baseline and variance 
+- CLEANUP: Removed some dead code (e.g. for DNS querying)
 
 TODO: 
 	***IMPORTANT TODO*** 
@@ -981,7 +982,7 @@ function render_slow_updating_graphs() {
     render_bar_graph @($Jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null `
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
 }
-function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
+function render_all($last_input, $PingsPerSec) {
     if (($BarGraphSamples -eq -1) -or (!(Test-Path variable:script:EffBarsThatFit))) {
         $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
     }
@@ -1032,7 +1033,7 @@ function render_all($last_input, $PingsPerSec, $ShowCountOfFailedResponders) {
     }
 
     if ($p95_values.count) {
-        render_slow_updating_graphs $ShowCountOfFailedResponders
+        render_slow_updating_graphs
         if (Test-Path variable:script:SCREEN_DUMP_FILE) {
             $filename = ($script:SCREEN_DUMP_FILE -replace ($env:TEMP -replace '\\','\\'), '$env:TEMP')
             echo "$COL_IMP_LOW     (Saving to $filename)"
@@ -1263,8 +1264,9 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
                 # This try/catch is an ugly hack because when pinging a host
                 # with no network (e.g. cable unpluged), render_all raises
                 # "Cannot index into a null array."
+				if ($target -eq '') {$EffectivePingsPerSec = 1} else {$EffectivePingsPerSec = $PingsPerSec }
                 try {
-                    $screen = render_all $last_input $PingsPerSec ($target -eq '')
+                    $screen = render_all $last_input $EffectivePingsPerSec 
                 } catch {
                     $screen = "Render_all error: $($error[0])`n$last_input"
                 }
