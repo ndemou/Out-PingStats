@@ -137,7 +137,15 @@ If you want to setup your terminal for high-res graphs, this is the TLDR guide:
    1. Open the zip file.
    1. Double-click the file `DejaVuSansMono.ttf`  (inside the `ttf` folder).
    1. Click install.
-   1. [Configure your PowerShell terminal](https://www.get-itsolutions.com/windows-terminal-change-font/) to use the newly installed font.
+   1. [Configure your PowerShell terminal](https://www.get-itsolutions.com/windows-terminal-change-font/) to use the newly installed font. (You may need to signout/signin if changes are not effective). Here are the steps for Windows Terminal:
+      * Open Windows Terminal.
+      * Click on the dropdown icon on the title bar.
+      * Select Settings.
+      * Select the shell of your choice on the sidebar.
+      * Click Appearance.
+      * In the Font Face type Deja Vu Sans Mono.
+      * Click Save.
+      * Reopen Windows Terminal.
    1. Add the `-HighResFont $true` argument if Out-PingStats does not automatically detect the availability of the new font.
 
 ### Other features
