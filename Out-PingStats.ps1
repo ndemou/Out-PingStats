@@ -1,5 +1,7 @@
 <#
-    v0.24.2
+    v0.24.3
+v0.24.3: 
+- IMPROVEMENT: Ctrl-S switches between high/low resolution font
 v0.24.2: 
 - IMPROVEMENT: Ctrl-H,J,L,R hides/shows graphs
 - CHANGE: default PingsPerSec is 1 (instead of 5)
@@ -692,7 +694,6 @@ function configure_graph_charset {
         $script:HighResFont=-not ($font -in @('courier','consolas'))
     }
     if (!($script:HighResFont)) {
-        $script:status += "(Low-Res)"
         echo "(Low resolution font)"
     }
 
@@ -1035,7 +1036,10 @@ function render_all($last_input, $PingsPerSec) {
             $script:show_jitter_graph = ! $script:show_jitter_graph
             clear # if show_ turns false we need to clear the whole screen
         }
-        
+        if ($keyinfo.Key -eq 'S' -and $keyinfo.Modifiers -eq 'Control') {
+            $script:HighResFont = ! $script:HighResFont
+            configure_graph_charset
+        }
     }
     if (($BarGraphSamples -eq -1) -or (!(Test-Path variable:script:EffBarsThatFit))) {
         $script:EffBarsThatFit = $Host.UI.RawUI.WindowSize.Width - 6
@@ -1099,6 +1103,11 @@ function render_all($last_input, $PingsPerSec) {
         }
         $error = $null # empty $error which collects errors from pings 
         [gc]::Collect() # force garbage collection
+    } else {
+        echo "$($COL_IMP_LOW)You can use Ctrl-H,J,L,R to hide/show Graphs and -S to change font"
+        if (!($script:HighResFont)) {
+            echo "$($COL_IMP_LOW)We are using Low resolution characters (Ctrl-S to try high resolution)"
+        }
     }
 
     if ($script:DebugMode) {
