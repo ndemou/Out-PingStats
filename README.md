@@ -21,21 +21,18 @@ Out-PingStats is a PowerShell script that displays detailed and easy-to-understa
 
            powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
 
-You will get good enough graphs without configuring anything but they
-will probably not be the highest quality possible. 
-Read below about selecting a font that will display the best graphs possible.
+   * Notice the shortcut shown at the end the graph titles. You can use these shortcuts to hide and show the graph.
+   * Hit Ctrl-S to toggle betweeen the two possible graph resolutions and keep the best of the two. You will get good enough graphs without configuring anything but they will probably not be the highest quality possible. Read below about selecting a font that will display the best graphs possible.
 
 ## Why would you want to use it? 
 
 #### You want a high certainty evaluation of your connection to the Internet 
 
-To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats is immune to problems of specific hosts because it pings 4 well known hosts in parallel. If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in either your infrastructure or your ISP.
+To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats pings 4 well known hosts in parallel (1.1.*.* and 8.8.*.*). If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in your ISP or your infrastructure.
 
-#### You want to visually evaluate the quality of a connection for many minutes or hours 
+#### You want to visually evaluate the quality of a connection for hours 
 
-Out-PingStats can nicely display several hours' worth of data in one screen, making it easy to assess the long term quality of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
-
-![image](https://github.com/ndemou/Out-PingStats/assets/4411400/08671c38-29ce-4fe3-afe7-56a3ccd2c2b5)
+Out-PingStats can nicely display several hours' worth of data in one screen, making it easy to assess the **long term quality** of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
 
 #### You love your shell, but also prefer graphs to long lists of numbers.
 
@@ -165,22 +162,8 @@ minute starting with the timestamp `hhmm:`. After the timestamp follows one
 character per measurement. The character is `[char]($RTT+34)`
 (e.g. `A` for 31msec, `B` for 32msec, etc). For lost pings you get an `!` instead.
 
-## Parameters
-    -PingsPerSec
-
-Pings per second to perform.
-In the default mode of operation (if you don't specify a host with `-target`) you can only select 1 (the default) or 2.
-
-Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
-
-A) Code that renders the screen is rather slow and ping replies will pile up
-  (when you stop the program, take a note of "Discarded N pings" message.
-  If N is more than two times your PingsPerSec you've hit this gotcha)
-
-B) The destination host will drop some of your ICMP echo requests(pings)
-
-For Internet hosts don't go higher than 1. In a LAN 5 is fine.
-
+## Arguments
+    -PingsPerSec N     (Pings per second - ignored when no host is specified)
     -Title "My pings"   (by default the host you ping)
     -GraphMax 50 -GraphMin 5    (by default they adjust automatically)
     -AggregationSeconds 120    (the default)
@@ -191,6 +174,18 @@ For Internet hosts don't go higher than 1. In a LAN 5 is fine.
     -HighResFont $true   (read above Re: fonts)
 
 ## Other details
+
+### About -PingsPerSec
+
+`-PingsPerSec` is ignored in the default mode of operation (i.e. when you don't specify a host with `-target`).
+
+Note that if you set this **too** high (e.g much more than 10) there are 2 gotchas:
+
+A) Code that renders the screen is rather slow and ping replies will pile up
+  (when you stop the program, take a note of "Discarded N pings" message.
+  If N is more than two times your PingsPerSec you've hit this issue)
+
+B) The destination host will drop some of your ICMP echo requests(pings)
 
 ### Parallel pings/smart aggregation
 
