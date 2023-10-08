@@ -1,28 +1,24 @@
-<#
-    v0.24.3
-v0.24.3: 
-- IMPROVEMENT: Ctrl-S switches between high/low resolution font
-v0.24.2: 
-- IMPROVEMENT: Ctrl-H,J,L,R hides/shows graphs
-- CHANGE: default PingsPerSec is 1 (instead of 5)
-v0.24.1: 
-- FIX: Corectly report ~1pings/sec when target is Internet
-v0.24.0: 
-- IMPROVEMENT: Stand alone code with no depedencies! (droped the ThreadJob module depedency)
-- CHANGE: Brand new parallel pinging strategy 
-  I only ping 4 well known hosts (all aces, all eights), using ping.exe
-- CHANGE: Displays p95(RTT) that everyone understands instead of baseline and variance 
-- CLEANUP: Removed some dead code (e.g. for DNS querying)
-
+<# v0.24.5
+- IMPROVEMENT: Use ping.exe instead of custom PowerShell ping function
+  (The PowerShell function was reporting about 5x more loss than ping.exe)
+  DRAWBACK: We can not send more than 1 ping/sec
+  
 TODO: 
     ***IMPORTANT TODO*** 
     When using parallel pinging I must calculate effective RTTs instead of 
     using the real RTTs. Look below for this comment:
     "TODO: convert real RTTs to effective RTTs before adding record to bucket"
-    
+
+    ***IMPORTANT TODO*** 
+	Do I have a memory leak? I see 318MB after a few hours
+	
+    -------------------
+	Use fping.exe or similar if found/requested
+	    
     -------------------
     During default ping Internet I need an extra job to ping the default GW 
     And since I do, display graphs for the default GW also 
+	Do not display 
     (hide the p95(RTT) graph if max is less than 2msec or <1/5*min(p95(RTT for Internet hosts))
     (hide the loss graph if max(loss) is 0% or <1/10*mean(loss of internet hosts))
     (hide the jitter graph if max(jitter) is less than 5ms or <1/10*mean(jitter of internet hosts))
@@ -355,85 +351,6 @@ Start-Job -ScriptBlock {sleep 0.3; $hostn="8.8.4.4"  ; while ($true) {ping -t $h
 echo "$(get-date -Format "hh:mm:ss") MONITORING"; while ($true) {get-job | receive-job; sleep 1}
 
 #>
-$CodeOfMultiPings = @'
-'@
-
-$CodeOfSpecialPing = @'
-Function Start-SpecialPing {
-    # Allows custom interval with msec accuracy.
-    # Will try to keep the pings per second at 1000/$Interval
-    # by sending the next ping earlier if the previous one 
-    # returned after more than $Interval msecs.
-    # NOTE that in case of failure, it does not return 0 but
-    # the elapsed time
-    Param(
-        [string]$target="",
-        [int]$TimeOut = 999,
-        [int]$Interval = 500
-    )
-
-    $ping_count = 0
-    $ts_first_ping = (Get-Date)
-    while ($True) {
-        $sent_at = (Get-Date)
-        # $sent_at.ticks / 10000 milliseconds counter
-        $Ping = [System.Net.NetworkInformation.Ping]::New()
-        try {
-            $ret = $Ping.Send($target, $TimeOut)
-        } catch {
-            $ret =[PSCustomObject]@{`
-                Status = $Error[0].Exception.GetType().FullName; `
-                RTT = 9999; `
-                group_id = $target; `
-                target = $target `
-            }
-        }
-        $ts_end = (Get-Date)
-        $ping_count += 1
-        if ($ret.Status -ne 'Success') {
-            $RTT = [int](($ts_end.ticks - $sent_at.ticks)/10000)
-        } else {
-            $RTT = $ret.RoundtripTime
-        }
-
-        if ($ping_count -eq 1) {
-            $total_elapsed_ms = $RTT
-            $expected_elapsed_ms = 0
-            $diff = $RTT
-            $ts_first_ping = $sent_at
-        } else {
-            $total_elapsed_ms = [int](($ts_end.ticks - $ts_first_ping.ticks)/10000)
-            $expected_elapsed_ms = [int](($ping_count-1) * $Interval)
-            $diff = $total_elapsed_ms - $expected_elapsed_ms
-        }
-
-        $sleep_ms = [math]::max(0, $Interval - $diff)
-        # return this:
-        [PSCustomObject]@{`
-            sent_at = $sent_at; `
-            Status = $ret.Status.tostring(); `
-            RTT = $RTT; `
-            ping_count = $ping_count; `
-            group_id = $target; `
-            target = $target; `
-            debug = ''
-        }
-<# this is good for debugging only
-[PSCustomObject]@{RTT = $RTT; `
-Status=$ret.Status; `
-sent_at = $sent_at; `
-ping_count=$ping_count; `
-total_ms=$total_elapsed_ms;
-expected_ms=$expected_elapsed_ms; `
-diff=($total_elapsed_ms - $expected_elapsed_ms); `
-sleep_ms = $sleep_ms
-}
-#>
-        if ($sleep_ms -gt 0) {start-sleep -Milliseconds $sleep_ms}
-
-    }
-}
-'@
 
 Set-strictmode -version latest
 
@@ -1000,7 +917,10 @@ function render_slow_updating_graphs() {
     #------------------------------
     $stats = (stats_of_series $Loss_values)
     $y_min = 0
-    if ($stats.max -le 6) {$y_max = 6} else {$y_max = 24}
+	# I used to allow for ymax = 24% but why bother?
+	# if you have more than 12% loss your line is seat(sic) anyway
+    # if ($stats.max -le 12) {$y_max = 12} else {$y_max = 24}
+	$y_max = 12
     $title = "LOSS%, $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>% (Ctrl-L)"
     render_bar_graph @($Loss_values | select -last $MaxItems) $title "<stats><H_grid><min_no_color>" 100 `
         $y_min $y_max $LOSS_BAR_GRAPH_THEME
@@ -1555,6 +1475,7 @@ Out-PingStats google.com
 The host to ping
 
 .PARAMETER PingsPerSec
+DEPRECATED ARGUMENT. HAS NO EFFECT
 Pings per second to perform. Note that if you set this too high there are 2 gotchas:
 A) Code that renders the screen is rather slow and ping replies will pile up
    (when you stop the program, take a note of "Discarded N pings" message.
@@ -1611,11 +1532,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
 
         configure_graph_charset
 
-        $parallel_testing = ($target -eq '')
-
         $jobs = @()
-        if ($parallel_testing) {
-            # We start two "beacon" pings to localhost and 4 pings to a few well known hosts
+        if ($target -eq '') {
+            # Pinging "The Internet"
+			# We start two "beacon" pings to localhost and 4 pings to a few well known hosts
             # if we loose the beacon pings it means we have no networking layer
             # (probably system is going to/coming from sleep)
             # The output is a stream of lines like these:
@@ -1634,20 +1554,19 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.8.8"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.4.4"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
         } else {
-            $group_id = $target
-            $last_RTTs[$group_id] = New-Object System.Collections.Queue
-            $last_RTTs[$group_id].enqueue(99)
-            $Median_of_last_RTTs[$group_id] = 0
+			# Pinging a specific host (the target)
+            # We start one "beacon" ping to localhost and 1 ping to the target host
+            # if we loose the beacon ping it means we have no networking layer
+            # (probably system is going to/coming from sleep)
+            # The output is a stream of lines like these:
+            #    1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+            #    1694902803.21696 Reply from 10.11.12.13: bytes=32 time=2ms TTL=55
 
-            $jobs += [array](
-                start-job -ArgumentList $PingsPerSec, $target, $CodeOfSpecialPing -ScriptBlock {
-                    $PingsPerSec = $args[0]
-                    $target = $args[1]
-                    $CodeOfSpecialPing = $args[2]
-                    . Invoke-Expression $CodeOfSpecialPing
-                    Start-SpecialPing  -Target $target -Interval (1000/$PingsPerSec)
-                }
-            )
+            # About the mysterious sleep 1: most of the times I get a reply from localhost
+            # before any of the others and the rest of the code will happily report
+            # a timeout to the Internet.
+            $jobs+=@((Start-Job -ScriptBlock {sleep 1; $hostn="127.0.0.1";while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+            $jobs+=@((Start-Job  -ArgumentList $target -ScriptBlock {while($true){ping -w 1000 -t $args[0]|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
         }
 
         if ($script:DebugMode) {
@@ -1674,67 +1593,57 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                 while (!($data)) {
                     sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
 
-                    foreach ($job in $jobs) {
-                        if ($parallel_testing) {
-                            if (($job | get-job).HasMoreData) {
-                                # receive-job is a stream of lines(strings) like these:
-                                #    1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
-                                #    1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
-                                #    1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
-                                #    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
-                                #    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
-                                #
-                                # Ping.exe has a timeout of 1.5sec, so a reply to one host may come 
-                                # 1499msec after the request, and a reply to another host may come in 1msec
-                                # AS A RESULT THE TIMESTAMPS MAY BE OUT OF ORDER BY AS MUCH AS 1.5sec
-                                #
-                                # parse_ping_exe_output gives a PSCustomObject stream like this:
-                                #     sent_at  (it is calculated as timestamp - RTT)
-                                #              (if parsing failed we set it to current time)
-                                #     RTT
-                                #     destination    # host addr
-                                #     Status = $null 
-                                #     parsing_error "" or a human readable parsing error
-                                #
-                                $parsed_lines += [array]($job | receive-job | %{ parse_ping_exe_output $_} )                                
+                    foreach ($job in $jobs) {                        
+						if (($job | get-job).HasMoreData) {
+							# receive-job is a stream of lines(strings) like these:
+							#    1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+							#    1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
+							#    1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
+							#    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
+							#    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
+							#
+							# Ping.exe has a timeout of 1.5sec, so a reply to one host may come 
+							# 1499msec after the request, and a reply to another host may come in 1msec
+							# AS A RESULT THE TIMESTAMPS MAY BE OUT OF ORDER BY AS MUCH AS 1.5sec
+							#
+							# parse_ping_exe_output gives a PSCustomObject stream like this:
+							#     sent_at  (it is calculated as timestamp - RTT)
+							#              (if parsing failed we set it to current time)
+							#     RTT
+							#     destination    # host addr
+							#     Status = $null 
+							#     parsing_error "" or a human readable parsing error
+							#
+							$parsed_lines += [array]($job | receive-job | %{ parse_ping_exe_output $_} )                                
 
-                                # From $parsed_lines, extract only the records having parsing_error="" and sent_at at least 
-                                # 1.99secs in the past*, move them to array $data
-                                # (Keep the other records in $parsed_lines for latter)
-                                # Ignore lines that failed parsing (just show parsing errors somewhere)
-                                #                                 *: See note about "OUT OF ORDER" above
-                                # 
-                                $records_kept = @()
-                                $parsed_lines | ?{$_} | %{
-                                    if ((((Get-Date) - $_.sent_at).TotalSeconds -lt 2) -and (!($_.parsing_error))) {
-                                        $records_kept += [array]$_ # replies within last 2sec -- keep them for later
-                                    } else {
-                                        $data += [array]$_ # replies ready for consumption
-                                    }
-                                }
-                                $parsed_lines = $records_kept # kept for later
-                            }
-                        } else {
-                            if (($job | get-job).HasMoreData) {$data += [array]($job | receive-job)}
-                        }
+							# From $parsed_lines, extract only the records having parsing_error="" and sent_at at least 
+							# 1.99secs in the past*, move them to array $data
+							# (Keep the other records in $parsed_lines for latter)
+							# Ignore lines that failed parsing (just show parsing errors somewhere)
+							#                                 *: See note about "OUT OF ORDER" above
+							# 
+							$records_kept = @()
+							$parsed_lines | ?{$_} | %{
+								if ((((Get-Date) - $_.sent_at).TotalSeconds -lt 2) -and (!($_.parsing_error))) {
+									$records_kept += [array]$_ # replies within last 2sec -- keep them for later
+								} else {
+									$data += [array]$_ # replies ready for consumption
+								}
+							}
+							$parsed_lines = $records_kept # kept for later
+						}                         
                     }
 
                     # $data
                     if ($data) {
                         $data_sorted = ($data | ?{$_} | sort-object -property sent_at)
                         $data = @()
-                        if ($parallel_testing) {
-                            # parallel host mode of operation 
-                            $data_sorted | %{
-                                if ($script:DebugMode) {write-host -fore cyan $_}
-                                $out = (process_parallel_host_PSOC $_)
-                                if (($script:DebugMode) -and $out) {write-host -fore magenta $out}
-                                echo $out
-                            }
-                        } else {
-                            # non-parallel single host mode of operation 
-                            $data_sorted | %{$out = (process_single_host_PSOC $_); if ($script:DebugMode) {write-host $out}; echo $out}
-                        }
+						$data_sorted | %{
+							if ($script:DebugMode) {write-host -fore cyan $_}
+							$out = (process_parallel_host_PSOC $_)
+							if (($script:DebugMode) -and $out) {write-host -fore magenta $out}
+							echo $out
+						}
                     }
                 }
             }
