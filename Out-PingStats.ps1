@@ -1,7 +1,5 @@
-<# v0.24.5
-- IMPROVEMENT: Use ping.exe instead of custom PowerShell ping function
-  (The PowerShell function was reporting about 5x more loss than ping.exe)
-  DRAWBACK: We can not send more than 1 ping/sec
+<# v0.24.6
+- Bug fix: Fixed crash when all pings are lost in the RTT graph 
   
 TODO: 
     ***IMPORTANT TODO*** 
@@ -10,7 +8,8 @@ TODO:
     "TODO: convert real RTTs to effective RTTs before adding record to bucket"
 
     ***IMPORTANT TODO*** 
-	Do I have a memory leak? I see 318MB after a few hours
+	Memory leak!!! I see ~26MB/hour increase in RAM usage 
+    (e.g. 270 MB in 31870" up from an initial of 37MB)
 	
     -------------------
 	Use fping.exe or similar if found/requested
@@ -972,21 +971,28 @@ function render_all($last_input, $PingsPerSec) {
         "min=$all_min_RTT, max=$($all_max_RTT)ms, lost=$all_lost_cnt"
     echo "$COL_H1$header$COL_RST"
 
-    if ($last_input.Status -ne 'Success') {
-        # instead of the status line show last failure in red
-    echo "${col_hilite}Last ping failed: $($last_input.Status)$COL_RST"
-    } else {
-        # show status if any
-        echo "$COL_IMP_LOW     $($script:status)$COL_RST"
-    }
+    #if ($last_input.Status -ne 'Success') {
+    #    # instead of the status line show last failure in red
+    #echo "${col_hilite}Last ping failed: $($last_input.Status)$COL_RST"
+    #} else {
+    #    # show status if any
+    #    echo "$COL_IMP_LOW     $($script:status)$COL_RST"
+    #}
+    # show $script:status if any
+    echo "$COL_IMP_LOW     $($script:status)$COL_RST"
 
     if ($script:show_real_time_graph) {
         # display the RTT bar graph
         $graph_values =  @($RTT_values | select -last $script:EffBarsThatFit)
         # decide Y axis limits
-        $stats = (stats_of_series ($graph_values | ?{$_ -ne 9999}))
+        $graph_values_excl_999 = ($graph_values | ?{$_ -ne 9999})
+        if ($graph_values_excl_999) {
+            $stats = (stats_of_series $graph_values_excl_999)
+        } else {
+            $stats = @{min=0; p5=0; median=0; p95=0; max=0}
+        }
         ($time_graph_abs_min, $p5, $p95, $time_graph_abs_max) = ($stats.min, $stats.p5, $stats.p95, $stats.max)
-        $title = "LAST RTTs,  $($graph_values.count) pings, min=<min>, p95=<p95>, max=$($stats.max), last=<last> (ms) (Ctrl-R)"
+        $title = "LAST RTTs,  $($graph_values.count) pings, min=$($stats.min), p95=$($stats.p95), max=$($stats.max), last=<last> (ms) (Ctrl-R)"
 
         $y_min = (std_num_le $stats.min)
         if ($y_min -lt 10) {$y_min = 0}
@@ -1132,53 +1138,55 @@ If I need a color scale I can use color scales A) or B) from http://www.andrewno
         $bumpy_start_cleanup_done = $false
     }
     process {
-        $Items  | %{
-            # echo "Item: $($_.GetType().Name) $($_.status) $($_.RTT) $($_.status) "
-            # echo $_
-            # echo ""
+        if ($items) {
+            $Items  | %{
+                # echo "Item: $($_.GetType().Name) $($_.status) $($_.RTT) $($_.status) "
+                # echo $_
+                # echo ""
 
-            #echo $_, ($_.Status -eq 'Success')
-            if ($_.Status -eq 'Success') {
-                [int]$ms = $_.RTT
-                if ($ms -lt $all_min_RTT) {$all_min_RTT=$ms}
-                if ($ms -gt $all_max_RTT) {$all_max_RTT=$ms}
-                $all_pings_cnt += 1
-                if ($all_pings_cnt -eq 1) {
-                    $SamplingStart = (get-date)
-                }
-            } else {
-                # Failure (e.g. a timeout or anything else except a reply)
-                $ms = 9999 # <-- means failure
-                $all_pings_cnt += 1
-                $all_lost_cnt  += 1
-            }
-
-            # $RTT_values is used both to show the bar graph and for the histogram
-            # We need $HistSamples samples for the histogram and EffBarsThatFit
-            # for the bar graph. I add another 100 so that if the user enlarges the
-            # screen the graph will imidiately show more values.
-            $max_values_to_keep = [math]::max($script:EffBarsThatFit + 100, $HistSamples)
-
-            # populate $RTT_values
-            #-----------------------------
-            $RTT_values.enqueue($ms)
-            
-            # keep $ms to a list of values that we will right to the ops....pingrec file
-            if ($ms -eq 9999) {$ToSave_values += @(-1)} else {$ToSave_values += @($ms)}
-
-            # keep at most $script:EffBarsThatFit measurements in RTT_values
-            while ($RTT_values.count -gt $max_values_to_keep) {
-                $foo = $RTT_values.dequeue()
-            }
-
-            # other things to do with input
-            $last_input = $_
-
-            if (!($Title)) {
-                if ($Target -eq '') {
-                    $Title = $Title + "Internet hosts"
+                #echo $_, ($_.Status -eq 'Success')
+                if ($_.Status -eq 'Success') {
+                    [int]$ms = $_.RTT
+                    if ($ms -lt $all_min_RTT) {$all_min_RTT=$ms}
+                    if ($ms -gt $all_max_RTT) {$all_max_RTT=$ms}
+                    $all_pings_cnt += 1
+                    if ($all_pings_cnt -eq 1) {
+                        $SamplingStart = (get-date)
+                    }
                 } else {
-                    $Title = $Title + $Target
+                    # Failure (e.g. a timeout or anything else except a reply)
+                    $ms = 9999 # <-- means failure
+                    $all_pings_cnt += 1
+                    $all_lost_cnt  += 1
+                }
+
+                # $RTT_values is used both to show the bar graph and for the histogram
+                # We need $HistSamples samples for the histogram and EffBarsThatFit
+                # for the bar graph. I add another 100 so that if the user enlarges the
+                # screen the graph will imidiately show more values.
+                $max_values_to_keep = [math]::max($script:EffBarsThatFit + 100, $HistSamples)
+
+                # populate $RTT_values
+                #-----------------------------
+                $RTT_values.enqueue($ms)
+                
+                # keep $ms to a list of values that we will right to the ops....pingrec file
+                if ($ms -eq 9999) {$ToSave_values += @(-1)} else {$ToSave_values += @($ms)}
+
+                # keep at most $script:EffBarsThatFit measurements in RTT_values
+                while ($RTT_values.count -gt $max_values_to_keep) {
+                    $foo = $RTT_values.dequeue()
+                }
+
+                # other things to do with input
+                $last_input = $_
+
+                if (!($Title)) {
+                    if ($Target -eq '') {
+                        $Title = $Title + "Internet hosts"
+                    } else {
+                        $Title = $Title + $Target
+                    }
                 }
             }
         }
@@ -1545,10 +1553,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             #    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
             #    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
 
-            # About the mysterious sleep 1: most of the times I get a reply from localhost
+            # About the mysterious sleep 3: most of the times I get a reply from localhost
             # before any of the others and the rest of the code will happily report
             # a timeout to the Internet.
-            $jobs+=@((Start-Job -ScriptBlock {sleep 1; $hostn="127.0.0.1";while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+            $jobs+=@((Start-Job -ScriptBlock {sleep 3; $hostn="127.0.0.1";while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.1"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.2"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.8.8"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
