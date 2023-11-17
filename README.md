@@ -6,19 +6,19 @@ Out-PingStats is a glorified graphical version of ping. It displays detailed and
 
 ## TLDR How to try it out
 
-### Step 1. Download 
+### Test your internet connection:
 
+    # download
     cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
-
-### Step 2. Run
-
-   1. Test your internet connection:
-
-           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1"
+    # run
+    powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1"
     
-   3. Test the connection to a specific host:
+### Test the connection to a specific host:
 
-           powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
+    # download
+    cd $Env:USERPROFILE; iwr -useb https://raw.githubusercontent.com/ndemou/Out-PingStats/main/Out-PingStats.ps1 -OutFile Out-PingStats.ps1
+    # run
+    powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
 
    * Notice the shortcut shown at the end the graph titles. You can use these shortcuts to hide and show the graph.
    * Hit Ctrl-S to toggle betweeen the two possible graph resolutions and keep the best of the two. You will get good enough graphs without configuring anything but they will probably not be the highest quality possible. Read below about selecting a font that will display the best graphs possible.
