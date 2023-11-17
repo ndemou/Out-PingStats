@@ -32,7 +32,7 @@ Looking at the raw output of ping for more than a few seconds is tiring. A quick
 
 #### You want a high certainty evaluation of your connection to the Internet 
 
-To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats pings 4 well known hosts in parallel (1.1.*.* and 8.8.*.*). If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in your ISP or your infrastructure.
+To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats pings 4 well known hosts in parallel (1.1.\*.* and 8.8.\*.*). If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in your ISP or your infrastructure.
 
 #### You want to visually evaluate the quality of a connection for minutes or hours 
 
