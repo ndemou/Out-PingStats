@@ -1,7 +1,6 @@
 ## What is it?
 
-Out-PingStats uses ping under the hood but displays detailed and easy-to-understand graphs that will help you assess the quality of your internet uplink or connection to a specific host. It is perfect both for short-term (a few seconds) and long-term (a few hours) use, is written in powershell, and you can use it directly from your terminal.
-
+Out-PingStats is a glorified graphical version of ping. It displays detailed and easy-to-understand graphs to help you assess the quality of either your internet uplink or your connection to a specific host. It is perfect for medium and long-term use (a few minutes to a few hours), is written in powershell, and runs on your terminal.
 
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/63b33280-a1ba-4a08-8fe4-da0572c2f942)
 
