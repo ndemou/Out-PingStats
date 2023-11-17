@@ -25,17 +25,18 @@ Out-PingStats is a glorified graphical version of ping. It displays detailed and
 
 ## Why would you want to use it? 
 
+#### You love your shell, but also prefer graphs to long lists of numbers.
+
+Looking at the raw output of ping for more than a few seconds is tiring. A quick glance at the screen of Out-PingStats conveys all the information you need
+!
+
 #### You want a high certainty evaluation of your connection to the Internet 
 
 To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats pings 4 well known hosts in parallel (1.1.*.* and 8.8.*.*). If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in your ISP or your infrastructure.
 
-#### You want to visually evaluate the quality of a connection for hours 
+#### You want to visually evaluate the quality of a connection for minutes or hours 
 
-Out-PingStats can nicely display several hours' worth of data in one screen, making it easy to assess the **long term quality** of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
-
-#### You love your shell, but also prefer graphs to long lists of numbers.
-
-Well then, Out-PingStats is for you!
+Out-PingStats can nicely display several minutes or hours' worth of data in one screen, making it easy to assess the **long term quality** of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
 
 ## Example of using Out-PingStats to evaluate your Wi-Fi quality
 
