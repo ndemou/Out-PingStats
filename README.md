@@ -1,6 +1,6 @@
 ## What is it?
 
-Out-PingStats is a graphical version of ping with an extra mode of operation for the case of examining the quality of your uplink to the Internet. It displays detailed and easy-to-understand graphs. It is by far better than ping for medium and long-term use (a few minutes to a few hours), is written in powershell, and although it is graphical it still runs on your terminal.
+Out-PingStats is a graphical version of ping with an extra mode for examining the quality of your Internet connection. It displays detailed and easy-to-understand graphs. It is by far better than ping for medium and long-term use (a few minutes to a few hours), is written in powershell, and although it is graphical it still runs on your terminal.
 
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/63b33280-a1ba-4a08-8fe4-da0572c2f942)
 
@@ -20,19 +20,18 @@ Out-PingStats is a graphical version of ping with an extra mode of operation for
     # run
     powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
 
-   * Notice the shortcut shown at the end the graph titles. You can use these shortcuts to hide and show the graph.
-   * Hit Ctrl-S to toggle betweeen the two possible graph resolutions and keep the best of the two. You will get good enough graphs without configuring anything but they will probably not be the highest quality possible. Read below about selecting a font that will display the best graphs possible.
+   * Notice the shortcut shown at the end the graph titles. You can use these shortcuts to hide and show the graphs.
+   * Hit Ctrl-S to toggle betweeen the two possible graph resolutions and keep whichever looks better. You will get *good enough* graphs without configuring anything but if you spent a few minutes you will get production quality graphs (details follow).
 
 ## Why would you want to use it? 
 
-#### You love your shell, but also prefer graphs to long lists of numbers.
+#### You want detailed but also easy to grasp results.
 
-Looking at the raw output of ping for more than a few seconds is tiring. A quick glance at the screen of Out-PingStats conveys all the information you need
-!
+Looking at the raw output of ping for more than a few seconds is tiring. A quick glance at the screen of Out-PingStats gives you a lot more information that is also easy to comprehend (packet loss, max RTT times, jitter).
 
 #### You want a high certainty evaluation of your connection to the Internet 
 
-To evaluate the uplink quality you may `ping google.com` or some other well known host. However, any specific host, even a robust one like google.com, may experience issues or may throttle your packets. Out-PingStats pings 4 well known hosts in parallel (1.1.\*.* and 8.8.\*.*). If you see packet loss or bad response times, you can be pretty certain that it's because of a problem in your ISP or your infrastructure.
+To evaluate the uplink quality you can `ping google.com` or some other well known host. However, any host, even a robust one like google.com, may experience issues or throttle your pings. Out-PingStats pings *four* well known hosts in parallel, so if you see packet loss or high response times, you can be pretty certain that the issue lies either on your infrastructure or your ISP.
 
 #### You want to visually evaluate the quality of a connection for minutes or hours 
 
