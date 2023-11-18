@@ -1,6 +1,6 @@
 ## What is it?
 
-Out-PingStats is a graphical version of ping with an extra mode for examining the quality of your Internet connection. It displays detailed and easy-to-understand graphs. It is by far better than ping for medium and long-term use (a few minutes to a few hours), is written in powershell, and although it is graphical it still runs on your terminal.
+Out-PingStats is a graphical version of ping with an special mode of operation for examining the quality of your Internet connection. It displays detailed and easy-to-understand graphs. It is by far better than ping for medium and long-term use (a few minutes to a few hours), is written in powershell, and although it is graphical it still runs on your terminal.
 
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/63b33280-a1ba-4a08-8fe4-da0572c2f942)
 
