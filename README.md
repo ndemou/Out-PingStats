@@ -1,6 +1,6 @@
 ## What is it?
 
-Out-PingStats is a graphical version of ping designed for long-term monitoring. It visualizes your connection either to another host or to the Internet. It offers both second by second real-time graphs and minute by minute statistics for packet loss, jitter, and response times. When evaluating Internet connection quality it runs multiple pings in parallel for reliable assessment. It is written in powershell, and although it's graphical it still runs on your terminal.
+Out-PingStats is a graphical version of ping designed for long-term monitoring. It visualizes your connection either to another host or to the Internet. It offers both second by second real-time graphs and minute by minute statistics for response time, packet loss, and jitter. When evaluating Internet connection quality, it runs multiple pings in parallel for reliable assessment. It's written in powershell, and although it's graphical it still runs on your terminal.
 
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/63b33280-a1ba-4a08-8fe4-da0572c2f942)
 
@@ -234,5 +234,5 @@ is better than taking the jitter for every host.
 ### Long term behaviour of a 4G connection
 
 (This example is from an older version where the 95th percentile was split in two different graphs,
-one for the minimum and one for p95-min. It was providing a bit more informative, but it was also harder to explain it to the uninitiated)
+one for the minimum and one for p95-min. It was more informative but less intuitive)
 ![image](https://github.com/ndemou/Out-PingStats/assets/4411400/08671c38-29ce-4fe3-afe7-56a3ccd2c2b5)
