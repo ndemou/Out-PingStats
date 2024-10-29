@@ -65,12 +65,11 @@ Seeing the output it is obvious that your Wi-Fi isn't good for VoIP or gaming.
 If you want to evaluate your connection to a specific host 
 (e.g. when you want to test your ethernet/WIFI quality)
 you specify the host with `-Target` and maybe also set 
-a higher ping rate (with `-PingsPerSec`). 
-In this case Out-PingStats will obviously only ping the host you specified.
+a higher ping rate (with `-PingsPerSec`).
 
 ### Understanding the graphs
 
-The **LAST RTTs** graph at the top shows one bar for every ping/DNS query.
+The **LAST RTTs** graph at the top shows one bar for every ping.
 It's a bit better than looking at the raw output of `ping.exe`.
 Timeouts/lost packets will appear as a bar of red stars: 
 
