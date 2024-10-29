@@ -20,7 +20,7 @@ Out-PingStats is a graphical version of ping designed for long-term monitoring. 
     # run
     powershell -exec bypass -c "$Env:USERPROFILE\Out-PingStats.ps1 $(read-host 'Enter host to ping')"
 
-   * Notice the shortcut shown at the end the graph titles. You can use these shortcuts to hide and show the graphs.
+   * Notice the keyboard shortcut shown at the end of the graph titles. You can use these shortcuts to hide and show the graphs.
    * Hit Ctrl-S to toggle betweeen the two possible graph resolutions and keep whichever looks better. You will get *good enough* graphs without configuring anything but if you spent a few minutes you will get production quality graphs (details follow).
 
 ## Why would you want to use it? 
