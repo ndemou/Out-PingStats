@@ -1,5 +1,5 @@
-<# v0.24.7
-- Improvement: Warning on high RAM usage, exception on very hing
+<# v0.24.8
+- Improvement: Better defaul Y-max values in slow graphs
   
 TODO: 
     ***IMPORTANT TODO*** 
@@ -945,6 +945,7 @@ function render_slow_updating_graphs() {
     if ($GraphMax -ne -1) {$y_max = $GraphMax} else {
         $y_max = (y_axis_max $stats.min $stats.max $y_min 10)
         if ($y_max -eq $y_min) {$y_max = (std_num_ge $y_max + 1)}
+        if ($y_max -gt 300) {$y_max = 300} # 300msec is a high enough value
     }
     $title = "RTT 95th PERCENTILE, $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms)"
     render_bar_graph $values $title "<stats><H_grid>" 9999 `
@@ -958,7 +959,7 @@ function render_slow_updating_graphs() {
 	# I used to allow for ymax = 24% but why bother?
 	# if you have more than 12% loss your line is seat(sic) anyway
     # if ($stats.max -le 12) {$y_max = 12} else {$y_max = 24}
-	$y_max = 12
+	$y_max = 6 # 6% is a high enough value
     $title = "LOSS%, $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>% (Ctrl-L)"
     render_bar_graph @($Loss_values | select -last $MaxItems) $title "<stats><H_grid><min_no_color>" 100 `
         $y_min $y_max $LOSS_BAR_GRAPH_THEME
@@ -970,7 +971,7 @@ function render_slow_updating_graphs() {
     $title = "ONE-WAY JITTER, $AggPeriodDescr, min=<min>, p95=<p95>, max=<max>, last=<last> (ms) (Ctrl-J)"
     $stats = (stats_of_series $Jitter_values)
     $y_min = 0
-    $y_max = 30
+    $y_max = 50 # 50msec is a high enough value
     render_bar_graph @($Jitter_values | select -last $MaxItems) $title "<stats><H_grid>" $null `
         $y_min $y_max $JITTER_BAR_GRAPH_THEME
     }
@@ -1044,6 +1045,8 @@ function render_all($last_input, $PingsPerSec) {
             $max_to_show = $stats.p95 
         }
         $y_max = (y_axis_max $stats.min $max_to_show $y_min 9)
+        if ($y_max -gt 300) {$y_max = 300} # 300 is a high enough value
+        if ($y_min -ge $y_max) {$y_min = 0} 
         if ($GraphMin -ne -1) {$y_min = $GraphMin}
         if ($GraphMax -ne -1) {$y_max = $GraphMax}
         render_bar_graph $graph_values "$title"  "<stats><H_grid>" 9999 $y_min $y_max
