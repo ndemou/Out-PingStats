@@ -1,5 +1,5 @@
-<# v0.24.6
-- Bug fix: Fixed crash when all pings are lost in the RTT graph 
+<# v0.24.7
+- Improvement: Warning on high RAM usage, exception on very hing
   
 TODO: 
     ***IMPORTANT TODO*** 
@@ -364,6 +364,8 @@ $JITTER_BAR_GRAPH_THEME=@{base=$col_base ;
     $LR_BAR_CHR_V_ = '_' +[char]8215 +[char]8332 +[char]9604 +[char]9688 +[char]9608
 
 #----------------------------------------------------------------
+
+$TOTAL_RAM_MB = (Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory / 1MB
 
 $BarGraphSamples = $Host.UI.RawUI.WindowSize.Width - 6
 $HistBucketsCount=10
@@ -1079,6 +1081,14 @@ function render_all($last_input, $PingsPerSec) {
         echo "Jitter_values=$Jitter_values"
         #sleep 0.1
     }
+    
+    $used_RAM_MB = (Get-Process -Id $PID).WorkingSet64 / 1MB
+    if ($used_RAM_MB -gt $TOTAL_RAM_MB/10) {
+        write-host -for red "WARNING: I am using $used_RAM_MB MBs of RAM"
+        if ($used_RAM_MB -gt $TOTAL_RAM_MB/4) {
+            throw "RAM usage exceeded 25%"
+        }
+    }
 }
 function append_to_pingtimes($ToSave_values, $file) {
     # Record EVERY ping response to a text file named like:
@@ -1590,10 +1600,10 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             #    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
             #    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
 
-            # About the mysterious sleep 3: most of the times I get a reply from localhost
+            # About the mysterious sleep 1: most of the times I get a reply from localhost
             # before any of the others and the rest of the code will happily report
             # a timeout to the Internet.
-            $jobs+=@((Start-Job -ScriptBlock {sleep 3; $hostn="127.0.0.1";while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
+            $jobs+=@((Start-Job -ScriptBlock {sleep 1; $hostn="127.0.0.1";while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.1"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="1.1.1.2"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.8.8"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
