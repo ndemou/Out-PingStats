@@ -8,9 +8,46 @@ TODO:
     "TODO: convert real RTTs to effective RTTs before adding record to bucket"
 
     ***IMPORTANT TODO*** 
-	Memory leak!!! I see ~26MB/hour increase in RAM usage 
-    (e.g. 270 MB in 31870" up from an initial of 37MB)
-	
+    There is a memory leak of about 26MB/hour (624MB/day)
+
+    -------------------
+    I can have the user choose some quality target and then scale and color the 
+    graphs based on that. E.g. The user hits ctrl-Q, C and I setup the graphs 
+    for VoIP *C*alls. A very rough guideline is below. It was produced by ChatGPT 
+    with a bit of interogation to get something more or less close to the truth.
+    
+    Packet Loss
+
+    | Application             |Ideal| OK  |Poor|Bad|
+    |-------------------------|-----|-----|----|---|
+    | Remote Desktop Usage (R)| 0%  | <1% |<2% | > |
+    | VoIP Calls           (C)| 0%  | <1% |<3% | > |
+    | Internet FPS Gaming  (G)| 0%  | <1% |<2% | > |
+    | YouTube Viewing      (V)| 0%  | <2% |<6% | > |
+    | Web Browsing         (W)| 0%  | <1% |<5% | > |
+
+    RTT
+
+    | Application             | Ideal  |  OK   | Poor  |Bad|
+    |-------------------------|--------|-------|-------|---|
+    | Remote Desktop Usage (R)| < 50 ms|<100 ms|<200 ms| > |
+    | VoIP Calls           (C)| < 75 ms|<150 ms|<300 ms| > |
+    | Internet FPS Gaming  (G)| < 50 ms|<100 ms|<150 ms| > |
+    | YouTube Viewing      (V)| <100 ms|<200 ms|<500 ms| > |
+    | Web Browsing         (W)| <100 ms|<200 ms|<300 ms| > |
+
+    Jitter
+
+    | Application             | Ideal | OK   | Poor |Bad|
+    |-------------------------|-------|------|------|---|
+    | Remote Desktop Usage (R)| N/A   | N/A  | N/A  |N/A|
+    | VoIP Calls           (C)| <20 ms|<30 ms|<50 ms| > |
+    | Internet FPS Gaming  (G)| <20 ms|<30 ms|<50 ms| > |
+    | YouTube Viewing      (V)| N/A   | N/A  | N/A  |N/A|
+    | Web Browsing         (W)| N/A   | N/A  | N/A  |N/A|
+    
+    (You can assume 500ms instead of N/A and you'll be fine)
+    
     -------------------
 	Use fping.exe or similar if found/requested
 	    
