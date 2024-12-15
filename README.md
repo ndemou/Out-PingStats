@@ -33,6 +33,33 @@ Looking at the raw output of ping for more than a few seconds is tiring. A quick
 
 To evaluate the uplink quality you can `ping google.com` or some other well known host. However, any host, even a robust one like google.com, may experience issues or throttle your pings. Out-PingStats pings *four* well known hosts in parallel, so if you see packet loss or high response times, you can be pretty certain that the issue lies either on your infrastructure or your ISP.
 
+```
+        +---------+               }
+        | Your PC |               }
+        +---++----+               }
+            ||                    }
+    +-------''------------+       }
+    |your network WIFI/LAN|       }  if Out-PingStats
+    +-------,,------------+       }  shows a bad connection
+            ||                    }--the problem is most
+        +---''---+                }  likely somewhere 
+        | Router |                }  around up here
+        +---,,---+                }  
+            ||                    }
+    +-------''---------+          }
+    |your ISP's network|          }
+    +-------,,---------+          }
+          .-''~-.          host4    
+  .- ~ ~-(       )_ __      /       
+ /                     ~ -./        because all 4
+|      The Internet         \       hosts down here
+ \                         .'       having problems
+   ~- . _____________ . -~  \       at the same time
+     /        |              \      is most likely
+    /         |             host3   not the case
+  host1      host2                  
+```
+
 #### You want to visually evaluate the quality of a connection for minutes or hours 
 
 Out-PingStats can nicely display several minutes or hours' worth of data in one screen, making it easy to assess the **long term quality** of a connection. It also saves its screen every 2 minutes in your `%TEMP%` folder so that you don't loose the results even if you accidentaly close its window. Check the saved screens with `ls $env:TEMP\ops*.screen` and view any of them with `cat ops.2023-05-14_15.34.46.screen`. Simple and helpful :-)
@@ -82,24 +109,23 @@ In any case you will need some experience with this graph to get a feeling
 of what is *normal* and what is not but I think it worths the time spent.
 Take a look at the examples below for a quick start.
 
-#### Slow updating graphs
+#### Aggregated Graphs (Interval-Based)
 
-All graphs below the HISTOGRAM are **slow updating graphs**. 
-Each bar represents some **indicator of network quality** that is computed 
-for a fixed *period* of several seconds. We get all the RTTs of that period
-and we aggregate them to one value.
-The *period* is by default 2 minutes but can be changed with `-AggregationSeconds`.
-In the x-axis you get a tick every 10 periods (so 20 mins by default).
+The bottom graphs present  aggregated values over an interval of 2 mins.
+So each bar represents some **indicator of network quality** that is computed 
+for a fixed period of several seconds. 
+The period is **by default 2 minutes** but can be changed with `-AggregationSeconds`.
+In the x-axis you get a tick every 10 periods (so by default 20 mins ).
 
 > **For all graphs the lower the better**
-
-**RTT 95th PERCENTILE** `= AlmostMax(RTT)` for the period. Almost Max is the 95th percentile (`p95`) of RTTs. In simple words, during a period, 95% of RTTs were less or equal to this value. (See bellow for more info).
 
 **LOSS%** is the percent of lost pings during the period.
 
 **ONE-WAY JITTER** is half the two-way jitter. 
 (we thus aproximate the one-way jitter by assuming that any delays are symetrical). 
 The jitter graph will not show jitter over 30msec because that's the limit for VoIP that doesn't suck :-)
+
+**RTT 95th PERCENTILE** `= AlmostMax(RTT)` for the period. Almost Max is the 95th percentile (`p95`) of RTTs. In simple words, during a period, 95% of RTTs were less or equal to this value. (See bellow for more info).
 
 We use the 95th percentile instead of the maximum as a better indicator of bad RTT times that
 we have to deal with **most** of the time. 
@@ -109,9 +135,8 @@ If ploted, that 820msec outlier,  will skew the scale of your plot extremely whi
 little information on the quality of the line during that 2min period.
 As a counter example gamers may care about the real max because even 1 or 2 cases of a really bad RTT 
 at the wrong time may be quite noticable.
-
-I confess, that **the selection of the 95th percentile is rather arbitrary and more 
-a result of intuition & *taste* than of investigation or knowledge** on the subject.
+**So the selection of the 95th percentile is rather arbitrary; more 
+the result of intuition & taste than of knowledge & investigation**.
 
 ### Regarding the terminal font
 
