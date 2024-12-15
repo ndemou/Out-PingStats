@@ -38,22 +38,23 @@ To evaluate the uplink quality you can `ping google.com` or some other well know
         | Your PC |               }
         +---++----+               }
             ||                    }
-    +-------''------------+       }
-    |your network WIFI/LAN|       }  if Out-PingStats
-    +-------,,------------+       }  shows a bad connection
+   +--------''-------------+      }
+   | Your network WIFI/LAN |      }  if Out-PingStats
+   +--------,,-------------+      }  shows a bad connection
             ||                    }--the problem is most
         +---''---+                }  likely somewhere 
-        | Router |                }  around up here
+        | Router |                }  around up here...
         +---,,---+                }  
             ||                    }
-    +-------''---------+          }
-    |your ISP's network|          }
-    +-------,,---------+          }
+   +--------''----------+         }
+   | Your ISP's network |         }
+   +--------,,----------+         }
+            ||                    }
           .-''~-.          host4    
   .- ~ ~-(       )_ __      /       
- /                     ~ -./        because all 4
+ /                     ~ -./        ...because all 4
 |      The Internet         \       hosts down here
- \                         .'       having problems
+ \                         .'       having a problem
    ~- . _____________ . -~  \       at the same time
      /        |              \      is most likely
     /         |             host3   not the case
