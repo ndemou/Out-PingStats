@@ -1,275 +1,131 @@
-<# v0.24.8
-- Improvement: Better defaul Y-max values in slow graphs
-  
-TODO: 
-    ***IMPORTANT TODO*** 
-    When using parallel pinging I must calculate effective RTTs instead of 
-    using the real RTTs. Look below for this comment:
-    "TODO: convert real RTTs to effective RTTs before adding record to bucket"
+<#
+.SYNOPSIS
+Continuously pings a host, or a small set of public hosts, and displays live connection-quality statistics.
 
-    ***IMPORTANT TODO*** 
-    There is a memory leak of about 26MB/hour (624MB/day)
+.DESCRIPTION
+Out-PingStats is an interactive terminal monitor for ICMP latency and packet loss.
 
-    -------------------
-    I can have the user choose some quality target and then scale and color the 
-    graphs based on that. E.g. The user hits ctrl-Q, C and I setup the graphs 
-    for VoIP *C*alls. A very rough guideline is below. It was produced by ChatGPT 
-    with a bit of interogation to get something more or less close to the truth.
-    
-    Packet Loss
+When you specify -Target, it continuously pings that host and renders live graphs and summaries for:
+- recent RTT values
+- RTT histogram
+- rolling loss percentage
+- rolling one-way jitter estimate
+- rolling RTT 95th percentile
 
-    | Application             |Ideal| OK  |Poor|Bad|
-    |-------------------------|-----|-----|----|---|
-    | Remote Desktop Usage (R)| 0%  | <1% |<2% | > |
-    | VoIP Calls           (C)| 0%  | <1% |<3% | > |
-    | Internet FPS Gaming  (G)| 0%  | <1% |<2% | > |
-    | YouTube Viewing      (V)| 0%  | <2% |<6% | > |
-    | Web Browsing         (W)| 0%  | <1% |<5% | > |
+When you omit -Target, it probes a few well-known Internet hosts in parallel and treats the result as a rough
+"Internet reachability and quality" indicator rather than a measurement for one exact destination.
 
-    RTT
+The display updates continuously until you stop it, typically with Ctrl+C.
 
-    | Application             | Ideal  |  OK   | Poor  |Bad|
-    |-------------------------|--------|-------|-------|---|
-    | Remote Desktop Usage (R)| < 50 ms|<100 ms|<200 ms| > |
-    | VoIP Calls           (C)| < 75 ms|<150 ms|<300 ms| > |
-    | Internet FPS Gaming  (G)| < 50 ms|<100 ms|<150 ms| > |
-    | YouTube Viewing      (V)| <100 ms|<200 ms|<500 ms| > |
-    | Web Browsing         (W)| <100 ms|<200 ms|<300 ms| > |
+This command is intended for human monitoring in a console window. Its primary output is a live screen display,
+not pipeline-friendly structured objects.
 
-    Jitter
+For best-looking graphs, use a monospace font with good Unicode block-character support. DejaVu Sans Mono works
+well. Consolas usually forces lower-resolution graph characters.
 
-    | Application             | Ideal | OK   | Poor |Bad|
-    |-------------------------|-------|------|------|---|
-    | Remote Desktop Usage (R)| N/A   | N/A  | N/A  |N/A|
-    | VoIP Calls           (C)| <20 ms|<30 ms|<50 ms| > |
-    | Internet FPS Gaming  (G)| <20 ms|<30 ms|<50 ms| > |
-    | YouTube Viewing      (V)| N/A   | N/A  | N/A  |N/A|
-    | Web Browsing         (W)| N/A   | N/A  | N/A  |N/A|
-    
-    (You can assume 500ms instead of N/A and you'll be fine)
-    
-    -------------------
-	Use fping.exe or similar if found/requested
-	    
-    -------------------
-    During default ping Internet I need an extra job to ping the default GW 
-    And since I do, display graphs for the default GW also 
-	Do not display 
-    (hide the p95(RTT) graph if max is less than 2msec or <1/5*min(p95(RTT for Internet hosts))
-    (hide the loss graph if max(loss) is 0% or <1/10*mean(loss of internet hosts))
-    (hide the jitter graph if max(jitter) is less than 5ms or <1/10*mean(jitter of internet hosts))
-    
-    -------------------
-    I visualize these cases in the real time graph at the TOP
-        a column of red N's means no Networking; no replies from localhost, only beacon lines are returned
-        a column of red L's means no LAN; no replies from default GW 
-        a column of red I's means no Internet; no replies from any of the Internet hosts
+.INTERACTIVE CONTROLS
+While the monitor is running, you can use:
+Ctrl-H  Toggle RTT histogram
+Ctrl-R  Toggle recent-RTT graph
+Ctrl-L  Toggle loss graph
+Ctrl-J  Toggle jitter graph
+Ctrl-S  Toggle graph character set / font mode
 
-    -------------------    
-    I need a smarter way to set the y-max for most graphs so
-      that when running the script from multiple windows or even from
-      multiple PCs I get comparable results
+.PARAMETER Target
+Host name or IP address to probe.
 
-     After the first period (typicaly 120") we set: 
-     Real time RTT
-        We use logarithmic(base 2) scale for Y. We may use one of these:
-            30,60,120 or 120,240,480 or 480,960,1920
-        We select the scale which has it's 1/3 point closer to min(RTT) 
-        The color of the bar is green, cyam, orange, yellow, red
-        based on how far from a good RTT it is
-        Good RTT is either <=10 or <=20 or <=40msec depending on the 
-        min(RTT) of the first 20pings 
-        We select Good RTT as the number bigger than min(RTT)*1.2 from 10,20,40,80
-        The user may force it with -MaxGoodRtt
-        Lost packets should be all red with yellow stars in them
-     p98(RTT) 
-        We use logarithmic(base 2) scale for Y. We may use one of these:
-            30,60,120 or 120,240,480 or 480,960,1920
-        (30,60,120 means that the first 1/3 of the graph is at 30msec, 
-            the 2nd at 60msec and the 3rd at 120)
-        We select the scale which has it's 1/3 point closer to min(RTT) 
-        Coloring is as for Real time RTT
-     Jitter
-        Should also have coloring (green to red) to show how good/bad VoIP will be
+If omitted, the command monitors general Internet quality by pinging several public hosts in parallel.
 
-    -------------------    
-     Per period stats must be recorded to a simple text file with this format (note the pading):
-        Out-PingStats Statistics
-        Destination(s) = 1.1.1.1, 1.1.1.2, 8.8.8.8, 8.8.4.4 
-        m=minimum RTT(ms), p=98th percentile of RTT(ms), j=half the two-way jitter(ms), L=loss(%)
-        2023/06/01 10:00, m=  7, p= 15, j= 12, L=  0.8
-        2023/06/01 10:02, m=  7, p= 15, j= 12, L=  0.8
-     Per hour stats are also output to a text file. Same layout and contains the max value
-        of the hour.
+.PARAMETER Title
+Custom title shown at the top of the screen.
 
-    -------------------
-TODO: This mode of operation and display will be wonderful for detecting whether problems 
-      lie from your PC to your router or from your router to the Internet 
+By default, the title is derived from -Target, or shows a generic Internet-oriented title when -Target is omitted.
 
-     P95, per 2' for 300', min=0, max=206, last=17 (ms)
- 300|_________________________________________________________________________________________
-    |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
-   0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
-              `^Internet`         `         `         `         `         `         `
-L300|_________________________________________________________________________________________
-A   |______█_________█__________▄_________█_________▆________▅▇__________▂_________▄__________
-N  0|_▁__▂▁█_▁_▂_▃___█▅_▆▁_____▅█▁▁_▁__▁▁▁█▁▁▂▁▂█_▁▂█▂▂▁_▂▁_▁███▁▃▅_▁__▃▂█__▁_▁_▂__█_▁_▁__▁_▁▁
-              `^LAN     `         `         `         `         `         `         `
-     LOSS%, per 2' for 300', min=0%, p95=23.33%, max=25.83%, last=0.833%
-  30|______▃_________▃_________▃____________________▃______________________________▅__________
-    |______█_________█_________█__________▅_________█_________▇_________▅__________█__________
-   0|______█_________█_________█_________▃█_________█_____▁__▁█_________██_________█_________▁
-              `^Internet`         `         `         `         `         `         `
-  30|_________________________________________________________________________________________
-    |______▃_________▃_________▃____________________▃_________▃_________▅__________▃__________
-   0|______█_________█_________█_________▃▃_________█_____▁__▁█_________██_________█_________▁
-              `^LAN     `         `         `         `         `         `         `
-     ONE-WAY JITTER, per 2' for 300', min=0, p95=33, max=92, last=8 (ms)
-  30|_____▂▲____________▂_______________________▲___▲________▲▲___█__▂_____________▆__________
-    |_▂__▁██▃__▆_▅___▅__█______▃_______▃_____█_▄█__▃█_▁__▅▂__██__▅█__█_▅▆_______▃__█__________
-   0|▃█▃▁████▅▁█▆█▅▂▂█▃_█▆▂▃▅▂▅█▅▆▆▁▆▃▂█▇▅█▄▆█▇██▃███▆█▆▃██▂███▆▆██_▄█▂██▄▄▆▄▂▅▂█▃▁█▂▃▄▅▃▂▆▁▆▆
-              `^Internet `         `         `         `         `         `         `
-  30|_____▂▲____________▂_______________________▲___▲________▲▲___█__▂_____________▆__________
-    |_▂__▁██▃__▆_▅___▅__█______▃_______▃_____█_▄█__▃█_▁__▅▂__██__▅█__█_▅▆_______▃__█__________
-   0|▃█▃▁████▅▁█▆█▅▂▂█▃_█▆▂▃▅▂▅█▅▆▆▁▆▃▂█▇▅█▄▆█▇██▃███▆█▆▃██▂███▆▆██_▄█▂██▄▄▆▄▂▅▂█▃▁█▂▃▄▅▃▂▆▁▆▆
-              `^LAN     `         `         `         `         `         `         `
-              
-TODO: Hide histogram if console height is not enough
-TODO: Print clock time every 10 or 20 vertical bars
-      i.e. '22:26 instead of just ` (yes ' is better than `)
-TODO: A function to install DejaVuSans Mono
-      Download 
-        https://dejavu-fonts.github.io/Download.html
-        http://sourceforge.net/projects/dejavu/files/dejavu/2.37/dejavu-fonts-ttf-2.37.zip
-      Install 
-        https://blog.simontimms.com/2021/06/11/installing-fonts/
-      (Changing the font that the console uses is harder)
-TODO: Add argument to change folder where I save files (default=$env:temp)
-TODO: Collect failures per target and display the top 3 or so failed%
-      (maybe show them next to the histogram)
-TODO: In Histogram show the actual max instead of ...MAX
-TODO: When multiple scripts run simultaneously sync Y-max for all graphs
-      if any of them was run with -SyncYAxis
-TODO: Option to read input from saved file
-TODO: In a perfect world this script could be discovering good pingable hosts
-      as it is running instead of the hardcoded list.
-      (I already have the helper_find_pingable_com_host function to use)
-TODO: While we collect enough data points to have a decent histogram
-      we do present the histogram. After that point we change visualization:
-      Now every block that used to show the histogram has a color that
-      represents how likely it was for the actual histogram to be reaching
-      just at this block.
-      (Use color scales A) or B) from
-      http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
-TODO: https://learn.microsoft.com/en-us/powershell/scripting/dev-cross-plat/performance/script-authoring-considerations?view=powershell-7.3
-      If you must write many messages to the console, Write-Host can be an
-      order of magnitude slower than [Console]::WriteLine()
+.PARAMETER GraphMax
+Upper Y-axis limit for RTT graphs.
 
-TODO: I can use this NON-BLOCKING code to read the last key pressed
-          if ([Console]::KeyAvailable) {$keyInfo = [Console]::ReadKey($true)}
-          if ($keyinfo.Key -eq 'H' -and $keyinfo.Modifiers -eq 'Control') {...}
-      $keyInfo.key is the most usefull property:
-            KeyChar      Key Modifiers
-            -------      --- ---------
-                  - OemMinus         0
-                  =  OemPlus         0
-                  _ OemMinus     Shift
-                  +  OemPlus     Shift
-                  +      Add         0 # Numpad
-                  - Subtract         0 # Numpad
-                  q        Q         0
-                  ;        Q         0 # Greek
-                  0       D0         0
-                  9       D9         0
-                  0  NumPad0         0 # Numpad
-                  9  NumPad9         0 # Numpad
-                  (       D9     Shift
-                  )       D0     Shift
+By default, the command chooses a sensible value automatically.
 
-TODO: togle visibility of graphs when user presses [R]ealtime [H]histogram [B]aseline [J]itter
-TODO: When user presses E(Event) mark the x-axis of all time graphs with a leter
-      (A for the first press, B for the 2nd, C, ...)
+.PARAMETER PingsPerSec
+Deprecated. Currently has no practical effect.
 
-TODO: Without -GraphMax, lost pings are stored as 9999msec replies. In some parts of the code
-    I take this into account and filter out 9999 values. See code with this expression:
-    ... $RTT_values | ?{$_ -ne 9999} |...
-    I don't always do it however. One case that this hurts is when deciding the max time
-    to display on the histogram (without a user provided -GraphMax).
+.PARAMETER GraphMin
+Lower Y-axis limit for RTT graphs.
 
-TODO: I could probably add a heatmap with 2 periods per character.
-    If one period is the default 2min then with 15chars I can cover 1 hour.
-    I am not sure how to convert the RTT, jitter and loss of 2mins to ONE color though
-    Maybe the user can specify a use (e.g. VoIP, browsing, gaming) and based on that
-    I can come up with a color for perfect, very good, good, poor, bad, very bad
-    (NOTE to self: If I need a color scale I can use color scales A) or B)
-    from http://www.andrewnoske.com/wiki/Code_-_heatmaps_and_color_gradients)
-#>
+By default, the command chooses a sensible value automatically.
 
-<# General notes
+.PARAMETER HistBucketsCount
+Number of buckets to use in the RTT histogram.
 
-WHY DO I ONLY PING ALL ACES, ALL EIGHTS
----------------------------------------
-      Hosts like all aces and all eights had 0.8% packet loss in my tests, 
-      so pinging just the 4 well known IPs 1.1.1.1, 1.1.1.2, 8.8.8.8, 8.8.4.4 is more than enough to avoid false negatives
-      >99.999% of the time 
+.PARAMETER AggregationSeconds
+Number of seconds per aggregation period for the slower trend graphs such as loss, jitter, and RTT 95th percentile.
 
-BEACON PING
------------
-    I use a beacon ping to 127.0.0.1 to run at the same rate as the main pings
-      Main loop uses replies from localhost as a reference "sampling clock".
-      This is usefull because ping.exe timeout(1.5sec) is larger than the ping period (every 1sec)
-      there can be silence periods where I will simple get no data back from 
-      parallel Multi Pings. During these silent periods localhost will respond
-      and main-loop will be able to detect timeouts
-      It will also be handy when we run on a laptop that goes to sleep.
-      where localhost will also stop responding 
+.PARAMETER HistSamples
+Number of recent samples to include in the RTT histogram.
 
+If omitted, the default is at least 100 samples and otherwise about one minute of samples.
 
-About ping.exe -w 1000 
-----------------------
--w 1000 is supposed to set the timeout to 1000msec but Windows seem to have some bugs there.
-If you ping.exe -w N a non responding host you get timeouts every N+1000msec
-Either Windows code waits 1000msec before sending the next packet after a timeout,
-or they incorectly set the timeout to 2000msec
-So the ICMP echo request packet must have been transmited between N to N+1000 msecs before and
+.PARAMETER Visual
+Reserved legacy parameter. Do not rely on it.
 
-Also pinging a host that replies in 300msec with -w 100 results in ping.exe happily reporting ping replies:
+.PARAMETER DebugMode
+Enables diagnostic behavior and reduces screen-clearing behavior to help troubleshoot parsing, aggregation,
+or rendering issues.
 
-PS C:\Users\user> ping -t -w 100 diamc.kr | %{echo "$((get-date -UFormat %s)) $_"}
-1696105305,53652
-1696105305,53752 Pinging diamc.kr [211.177.94.215] with 32 bytes of data:
-1696105305,76649 Request timed out.
-1696105307,07725 Reply from 211.177.94.215: bytes=32 time=307ms TTL=46
-1696105308,08322 Reply from 211.177.94.215: bytes=32 time=306ms TTL=46
-1696105309,0846 Reply from 211.177.94.215: bytes=32 time=307ms TTL=46
-1696105310,08837 Reply from 211.177.94.215: bytes=32 time=306ms TTL=46
-1696105311,09126 Reply from 211.177.94.215: bytes=32 time=307ms TTL=46
-1696105312,12153 Reply from 211.177.94.215: bytes=32 time=306ms TTL=46
-1696105313,10928 Reply from 211.177.94.215: bytes=32 time=305ms TTL=46
-1696105314,11527 Reply from 211.177.94.215: bytes=32 time=306ms TTL=46
+.PARAMETER DebugData
+Enables extra debug-data collection.
 
-#>
-<# Re: targets for pinging 
-   ===========================================
-   THE BASIC FACTS
-   ---------------
-   The hosts of one line are queried/pinged in order ONE AFTER THE OTHER
-   Every line is queried/pinged IN PARALLEL WITH EVERY OTHER LINE
+.PARAMETER HighResFont
+Controls graph-character mode.
 
-   ADVICE
-   ------
-   It's best to have AT LEAST 4 hosts in each line so that if you ping
-   every 1/2sec you are pinging each host at a slow pace of 1 ping per 2 seconds
+-1 = auto-detect
+ 0 = force low-resolution characters
+ 1 = force high-resolution characters
 
-   MORE DETAILS
-   ------------
-   Although you may be tempted to think that all hosts of one column are
-   pinged in parallel that will only be true if all hosts respond without
-   timing out. As soon as one host times out the order is messed up.
-   So after a while the only thing you can be sure of is that
-   some host of some line is pinged in parallel with a random
-   host of another line, and some random host of another line
-   and so on...
+Use low-resolution mode for terminals or fonts that do not render the Unicode block characters cleanly.
+
+.PARAMETER UpdateScreenEvery
+How often, in seconds, the screen is refreshed.
+
+Lower values make the display more responsive but may increase CPU use.
+
+.PARAMETER BarGraphSamples
+How many recent samples to show in the scrolling bar graphs.
+
+By default, the command derives this from the current console width.
+
+.EXAMPLE
+Out-PingStats google.com
+
+Continuously monitors latency, loss, jitter, and latency distribution to google.com.
+
+.EXAMPLE
+Out-PingStats 1.1.1.1 -Title "Cloudflare DNS"
+
+Monitors 1.1.1.1 and shows a custom title.
+
+.EXAMPLE
+Out-PingStats
+
+Shows a rough live view of general Internet quality by probing several public hosts in parallel.
+
+.EXAMPLE
+Out-PingStats 8.8.8.8 -GraphMin 0 -GraphMax 100 -AggregationSeconds 60
+
+Monitors 8.8.8.8 with fixed RTT graph limits and 1-minute aggregation windows.
+
+.NOTES
+This command starts background jobs and cleans them up when it exits.
+
+It also writes temporary screen/statistics data files under $env:TEMP.
+
+Loss, jitter, and percentile values are intended for operational monitoring, not for strict scientific measurement.
+
+.OUTPUTS
+None. This command is designed for interactive console display.
+
+.INPUTS
+None. This command does not accept pipeline input.
 #>
 
 # Re: colored printing
@@ -956,10 +812,10 @@ function render_slow_updating_graphs() {
     #------------------------------
     $stats = (stats_of_series $Loss_values)
     $y_min = 0
-	# I used to allow for ymax = 24% but why bother?
-	# if you have more than 12% loss your line is seat(sic) anyway
+    # I used to allow for ymax = 24% but why bother?
+    # if you have more than 12% loss your line is seat(sic) anyway
     # if ($stats.max -le 12) {$y_max = 12} else {$y_max = 24}
-	$y_max = 6 # 6% is a high enough value
+    $y_max = 6 # 6% is a high enough value
     $title = "LOSS%, $AggPeriodDescr, min=<min>%, p95=<p95>%, max=<max>%, last=<last>% (Ctrl-L)"
     render_bar_graph @($Loss_values | select -last $MaxItems) $title "<stats><H_grid><min_no_color>" 100 `
         $y_min $y_max $LOSS_BAR_GRAPH_THEME
@@ -1593,7 +1449,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
         $jobs = @()
         if ($target -eq '') {
             # Pinging "The Internet"
-			# We start two "beacon" pings to localhost and 4 pings to a few well known hosts
+            # We start two "beacon" pings to localhost and 4 pings to a few well known hosts
             # if we loose the beacon pings it means we have no networking layer
             # (probably system is going to/coming from sleep)
             # The output is a stream of lines like these:
@@ -1612,7 +1468,7 @@ B) The destination host may drop some of your ICMP echo requests(pings)
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.8.8"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
             $jobs+=@((Start-Job -ScriptBlock {$hostn="8.8.4.4"  ;while($true){ping -w 1000 -t $hostn|sls "time[<=]"|%{ echo "$(get-date -UFormat %s) $_"}}}))
         } else {
-			# Pinging a specific host (the target)
+            # Pinging a specific host (the target)
             # We start one "beacon" ping to localhost and 1 ping to the target host
             # if we loose the beacon ping it means we have no networking layer
             # (probably system is going to/coming from sleep)
@@ -1652,56 +1508,56 @@ B) The destination host may drop some of your ICMP echo requests(pings)
                     sleep -milliseconds 2000 # with 0.5 or less it overwhelms one CPU core...(???)
 
                     foreach ($job in $jobs) {                        
-						if (($job | get-job).HasMoreData) {
-							# receive-job is a stream of lines(strings) like these:
-							#    1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
-							#    1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
-							#    1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
-							#    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
-							#    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
-							#
-							# Ping.exe has a timeout of 1.5sec, so a reply to one host may come 
-							# 1499msec after the request, and a reply to another host may come in 1msec
-							# AS A RESULT THE TIMESTAMPS MAY BE OUT OF ORDER BY AS MUCH AS 1.5sec
-							#
-							# parse_ping_exe_output gives a PSCustomObject stream like this:
-							#     sent_at  (it is calculated as timestamp - RTT)
-							#              (if parsing failed we set it to current time)
-							#     RTT
-							#     destination    # host addr
-							#     Status = $null 
-							#     parsing_error "" or a human readable parsing error
-							#
-							$parsed_lines += [array]($job | receive-job | %{ parse_ping_exe_output $_} )                                
+                        if (($job | get-job).HasMoreData) {
+                            # receive-job is a stream of lines(strings) like these:
+                            #    1694902803.02123 Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+                            #    1694902803.21696 Reply from 1.1.1.1: bytes=32 time=26ms TTL=55
+                            #    1694902803.21696 Reply from 1.1.1.2: bytes=32 time=17ms TTL=55
+                            #    1694902800.29343 Reply from 8.8.8.8: bytes=32 time=31ms TTL=115
+                            #    1694902800.56886 Reply from 8.8.4.4: bytes=32 time=71ms TTL=115
+                            #
+                            # Ping.exe has a timeout of 1.5sec, so a reply to one host may come 
+                            # 1499msec after the request, and a reply to another host may come in 1msec
+                            # AS A RESULT THE TIMESTAMPS MAY BE OUT OF ORDER BY AS MUCH AS 1.5sec
+                            #
+                            # parse_ping_exe_output gives a PSCustomObject stream like this:
+                            #     sent_at  (it is calculated as timestamp - RTT)
+                            #              (if parsing failed we set it to current time)
+                            #     RTT
+                            #     destination    # host addr
+                            #     Status = $null 
+                            #     parsing_error "" or a human readable parsing error
+                            #
+                            $parsed_lines += [array]($job | receive-job | %{ parse_ping_exe_output $_} )                                
 
-							# From $parsed_lines, extract only the records having parsing_error="" and sent_at at least 
-							# 1.99secs in the past*, move them to array $data
-							# (Keep the other records in $parsed_lines for latter)
-							# Ignore lines that failed parsing (just show parsing errors somewhere)
-							#                                 *: See note about "OUT OF ORDER" above
-							# 
-							$records_kept = @()
-							$parsed_lines | ?{$_} | %{
-								if ((((Get-Date) - $_.sent_at).TotalSeconds -lt 2) -and (!($_.parsing_error))) {
-									$records_kept += [array]$_ # replies within last 2sec -- keep them for later
-								} else {
-									$data += [array]$_ # replies ready for consumption
-								}
-							}
-							$parsed_lines = $records_kept # kept for later
-						}                         
+                            # From $parsed_lines, extract only the records having parsing_error="" and sent_at at least 
+                            # 1.99secs in the past*, move them to array $data
+                            # (Keep the other records in $parsed_lines for latter)
+                            # Ignore lines that failed parsing (just show parsing errors somewhere)
+                            #                                 *: See note about "OUT OF ORDER" above
+                            # 
+                            $records_kept = @()
+                            $parsed_lines | ?{$_} | %{
+                                if ((((Get-Date) - $_.sent_at).TotalSeconds -lt 2) -and (!($_.parsing_error))) {
+                                    $records_kept += [array]$_ # replies within last 2sec -- keep them for later
+                                } else {
+                                    $data += [array]$_ # replies ready for consumption
+                                }
+                            }
+                            $parsed_lines = $records_kept # kept for later
+                        }                         
                     }
 
                     # $data
                     if ($data) {
                         $data_sorted = ($data | ?{$_} | sort-object -property sent_at)
                         $data = @()
-						$data_sorted | %{
-							if ($script:DebugMode) {write-host -fore cyan $_}
-							$out = (process_parallel_host_PSOC $_)
-							if (($script:DebugMode) -and $out) {write-host -fore magenta $out}
-							echo $out
-						}
+                        $data_sorted | %{
+                            if ($script:DebugMode) {write-host -fore cyan $_}
+                            $out = (process_parallel_host_PSOC $_)
+                            if (($script:DebugMode) -and $out) {write-host -fore magenta $out}
+                            echo $out
+                        }
                     }
                 }
             }
